@@ -23,7 +23,7 @@ export default function Home() {
         }}
       />
       <Hero />
-      <About />
+      <About hasGeminiKey={!!process.env.GEMINI_API_KEY} />
       <Ventures />
       <Experience />
       <Skills />

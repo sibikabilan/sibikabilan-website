@@ -7,6 +7,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { HorizontalRule } from "@/components/ui/HorizontalRule";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { AvatarChat } from "@/components/ui/AvatarChat";
+import Image from "next/image";
 
 function CountUp({ target, suffix = "" }: { target: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -47,7 +48,7 @@ const stats = [
   { label: "Fortune 500 Clients", value: 10, suffix: "+" },
 ];
 
-export function About() {
+export function About({ hasGeminiKey = false }: { hasGeminiKey?: boolean }) {
   return (
     <SectionWrapper id="about">
       <HorizontalRule className="mb-16" />
@@ -60,7 +61,19 @@ export function About() {
       <div className="grid gap-16 md:grid-cols-[1fr_1.5fr] md:items-start">
         {/* Portrait */}
         <ScrollReveal direction="left">
-          <AvatarChat />
+          {hasGeminiKey ? (
+            <AvatarChat />
+          ) : (
+            <div className="relative overflow-hidden border border-border">
+              <Image
+                src="/images/portrait.png"
+                alt="Sibi Kabilan"
+                width={400}
+                height={533}
+                className="w-full"
+              />
+            </div>
+          )}
         </ScrollReveal>
 
         {/* Bio + Stats */}
