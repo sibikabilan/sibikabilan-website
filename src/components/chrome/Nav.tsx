@@ -55,9 +55,6 @@ export function Nav({ showWriting, showFiction }: NavProps) {
           <span className="relative grid h-9 w-9 place-items-center rounded-full border border-line font-display text-lg italic text-ink transition-colors duration-500 group-hover:border-[color:var(--key)]">
             S
           </span>
-          <span className="hidden font-mono text-[11px] uppercase tracking-[0.24em] text-ink-2 sm:block">
-            Sibi Kabilan
-          </span>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">

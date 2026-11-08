@@ -6,10 +6,16 @@ import type { ChapterMeta, CmsIndex, PostMeta, Settings, Work } from "./types";
 
 export const CMS_TAG = "cms";
 
-const cachedIndex = unstable_cache(async () => (await loadIndex()).index, ["cms-index-v2"], {
-  tags: [CMS_TAG],
-  revalidate: 3600,
-});
+// Only stored content is cached. A site with nothing saved yet always reads the
+// defaults from code, so changes to defaults or starter posts show up at once.
+const cachedIndex = unstable_cache(
+  async () => {
+    const { index, objects } = await loadIndex();
+    return objects.length ? index : null;
+  },
+  ["cms-index-v3"],
+  { tags: [CMS_TAG], revalidate: 3600 }
+);
 
 // Document URLs are immutable, so their bodies can be cached forever.
 const cachedDoc = unstable_cache(async (url: string) => readDoc(url), ["cms-doc-v1"], {
@@ -19,7 +25,8 @@ const cachedDoc = unstable_cache(async (url: string) => readDoc(url), ["cms-doc-
 async function getIndex(): Promise<CmsIndex> {
   try {
     // Normalizing again keeps older cached shapes compatible with new fields.
-    return normalizeIndex(await cachedIndex());
+    const stored = await cachedIndex();
+    return stored ? normalizeIndex(stored) : emptyIndex();
   } catch (err) {
     // Failures are not cached; the site still renders with defaults.
     console.error("[cms] failed to load index", err);

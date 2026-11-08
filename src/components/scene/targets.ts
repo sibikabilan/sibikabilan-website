@@ -183,51 +183,11 @@ function haloOrbs(count: number): Target {
   return { pos, bright };
 }
 
-/** 05 · The agent's gyroscope: three thin rings on different axes. */
-function haloGyro(count: number): Target {
-  const r = mulberry32(9);
-  const pos = new Float32Array(count * 3);
-  const bright = new Float32Array(count);
-  const tilts = [
-    [0, 0],
-    [1.1, 0.4],
-    [1.15, -1.2],
-  ];
-  for (let n = 0; n < count; n++) {
-    const k = r();
-    if (k < 0.82) {
-      const which = n % 3;
-      const radius = [R, R * 1.06, R * 1.12][which];
-      const a = r() * Math.PI * 2;
-      let x = Math.cos(a) * (radius + gauss(r) * 0.018);
-      let y = Math.sin(a) * (radius + gauss(r) * 0.018);
-      let z = 0;
-      const [tx, ty] = tilts[which];
-      // tilt around x
-      const y1 = y * Math.cos(tx) - z * Math.sin(tx);
-      const z1 = y * Math.sin(tx) + z * Math.cos(tx);
-      y = y1;
-      z = z1;
-      // then around y
-      const x2 = x * Math.cos(ty) + z * Math.sin(ty);
-      const z2 = -x * Math.sin(ty) + z * Math.cos(ty);
-      x = x2;
-      z = z2;
-      pos[n * 3] = x;
-      pos[n * 3 + 1] = y;
-      pos[n * 3 + 2] = z;
-      bright[n] = 0.55 + r() * 0.6;
-    } else glow(r, pos, bright, n);
-  }
-  return { pos, bright };
-}
-
 export const HALOS = [
   { key: "halo-ring", name: "The halo" },
   { key: "halo-crown", name: "The founder's crown" },
   { key: "halo-circuit", name: "The engineer's circuit" },
   { key: "halo-orbs", name: "The storyteller's orbit" },
-  { key: "halo-gyro", name: "The agent's gyroscope" },
 ] as const;
 
 export type TargetKey = (typeof HALOS)[number]["key"];
@@ -238,7 +198,6 @@ export function buildTargets(count: number): Record<TargetKey, Target> {
     "halo-crown": haloCrown(count),
     "halo-circuit": haloCircuit(count),
     "halo-orbs": haloOrbs(count),
-    "halo-gyro": haloGyro(count),
   };
 }
 
@@ -249,7 +208,6 @@ export const SPINNING: Record<TargetKey, number> = {
   "halo-crown": 0,
   "halo-circuit": 0,
   "halo-orbs": 0,
-  "halo-gyro": 1,
 };
 
 /** Rotation within the ring's own plane, like a crown slowly turning. */
@@ -258,5 +216,4 @@ export const ROLLING: Record<TargetKey, number> = {
   "halo-crown": 0.6,
   "halo-circuit": -0.5,
   "halo-orbs": 0.8,
-  "halo-gyro": 0,
 };

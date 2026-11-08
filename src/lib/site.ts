@@ -66,12 +66,19 @@ export const NOW_WORK = {
 
 export interface ReelLogo {
   src?: string;
-  /** Text shown next to (or instead of) the mark. */
   label: string;
   /** Keep the logo's own colours instead of the white treatment. */
   color?: boolean;
-  /** Wordmark only: no image, set in type. */
+  /** Set the label in type instead of an image. */
   wordmark?: boolean;
+  /** Text after the mark, e.g. Samsung + "Care+". */
+  suffix?: string;
+}
+
+export interface ReelCredit {
+  label: string;
+  logos: ReelLogo[];
+  size: "lg" | "md";
 }
 
 export interface ReelFrame {
@@ -82,9 +89,11 @@ export interface ReelFrame {
   line: string;
   image: string;
   alt: string;
-  logos: ReelLogo[];
+  credits: ReelCredit[];
   overlay?: "blueprint";
 }
+
+const OSU: ReelLogo = { src: "/logos/oregon-state.svg", label: "Oregon State University" };
 
 export const REEL: ReelFrame[] = [
   {
@@ -92,16 +101,22 @@ export const REEL: ReelFrame[] = [
     place: "Corvallis, Oregon",
     title: "Where I learned to build.",
     body:
-      "Oregon State gave me a campus and, unusually early, real users. I wrote software for the Oregon Department of Transportation's traffic operations and worked on projects for the USDA, the California Board of Education and HP. Operators, analysts, civil servants: people who just needed the thing to work.",
+      "Oregon State gave me a campus and, unusually early, real users. Traffic operations software for the state of Oregon, and projects for the USDA, the California Board of Education and HP. Operators, analysts, civil servants: people who just needed the thing to work.",
     line: "Software people rely on doesn't get a maintenance window.",
     image: "/media/era-osu.webp",
     alt: "A silhouette on the lawn in front of the Memorial Union at Oregon State University",
-    logos: [
-      { src: "/logos/oregon-state.svg", label: "Oregon State University" },
-      { src: "/logos/odot.svg", label: "Oregon Department of Transportation" },
-      { src: "/logos/usda.svg", label: "USDA" },
-      { label: "California Board of Education", wordmark: true },
-      { src: "/logos/hp.svg", label: "HP" },
+    credits: [
+      { label: "Filmed at", size: "lg", logos: [OSU] },
+      {
+        label: "In association with",
+        size: "md",
+        logos: [
+          { src: "/logos/odot.svg", label: "Oregon Department of Transportation" },
+          { src: "/logos/usda.svg", label: "USDA" },
+          { label: "California Board of Education", wordmark: true },
+          { src: "/logos/hp.svg", label: "HP" },
+        ],
+      },
     ],
   },
   {
@@ -113,8 +128,8 @@ export const REEL: ReelFrame[] = [
     line: "Design for whoever is on call when you're gone.",
     image: "/media/era-2017.webp",
     alt: "System diagrams on a glass wall above a city at dusk",
-    logos: [],
     overlay: "blueprint",
+    credits: [{ label: "An independent production", size: "lg", logos: [{ label: "Five clients · Twelve systems", wordmark: true }] }],
   },
   {
     years: "2018 to 2021",
@@ -125,20 +140,26 @@ export const REEL: ReelFrame[] = [
     line: "Nobody buys AI. They buy an outcome they can trust.",
     image: "/media/era-2018.webp",
     alt: "A street scene projected on a wall with computer vision tracking boxes",
-    logos: [{ label: "KayaDev AI", wordmark: true }],
+    credits: [{ label: "A production of", size: "lg", logos: [{ label: "KayaDev AI", wordmark: true }] }],
   },
   {
     years: "2022 to 2024",
-    place: "India and North America",
+    place: "Servify · India and North America",
     title: "Real money, real people.",
     body:
-      "At Servify I looked after device protection for Samsung and Apple customers. I built the system that watched for fraud, and put generative AI in front of customers through chat, IVR and voice. When it's someone's phone and someone's money, there is no small mistake.",
+      "I looked after device protection for Samsung and Apple customers, built the system that watched for fraud, and put generative AI in front of customers through chat, IVR and voice. When it's someone's phone and someone's money, there is no small mistake.",
     line: "Decide what it must never do before what it should do.",
     image: "/media/era-2022.webp",
     alt: "Rows of glowing phones beneath streams of light like transactions",
-    logos: [
-      { src: "/logos/samsung.svg", label: "Care+" },
-      { src: "/logos/apple.svg", label: "AppleCare+" },
+    credits: [
+      {
+        label: "Presented for",
+        size: "lg",
+        logos: [
+          { src: "/logos/samsung.svg", label: "Samsung Care+", suffix: "Care+" },
+          { src: "/logos/apple.svg", label: "AppleCare+", suffix: "AppleCare+" },
+        ],
+      },
     ],
   },
   {
@@ -150,7 +171,7 @@ export const REEL: ReelFrame[] = [
     line: "I write the agent's code, and I answer for what it does.",
     image: "/media/era-2025.webp",
     alt: "A ribbon of light flowing from a chat bubble through a voice wave into a phone",
-    logos: [{ src: "/logos/supragent.webp", label: "SuprAgent", color: true }],
+    credits: [{ label: "A SuprAgent original", size: "lg", logos: [{ src: "/logos/supragent.webp", label: "SuprAgent", color: true }] }],
   },
 ];
 

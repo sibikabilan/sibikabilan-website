@@ -1,7 +1,6 @@
 import { getPublishedPosts, getPublishedWorks, getSettings } from "@/lib/cms/queries";
 import { Hero } from "@/components/home/Hero";
 import { Prologue } from "@/components/home/Prologue";
-import { Facets } from "@/components/home/Facets";
 import { Reel } from "@/components/home/Reel";
 import { Now } from "@/components/home/Now";
 import { Person } from "@/components/home/Person";
@@ -32,7 +31,6 @@ export default async function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <Hero settings={settings} />
       <Prologue />
-      <Facets />
       <Reel />
       <Now companyUrl={settings.companyUrl} />
       <Person settings={settings} />

@@ -89,33 +89,6 @@ const particleFragment = /* glsl */ `
   }
 `;
 
-const dustVertex = /* glsl */ `
-  uniform float uTime;
-  uniform float uPixelRatio;
-  attribute float aRand;
-  varying float vA;
-  void main() {
-    vec3 p = position;
-    p.y = mod(p.y + uTime * 0.07 * (0.4 + aRand) + 4.5, 9.0) - 4.5;
-    p.x += sin(uTime * 0.2 + aRand * 10.0) * 0.25;
-    vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    gl_Position = projectionMatrix * mv;
-    gl_PointSize = (10.0 + aRand * 26.0) * uPixelRatio * (1.0 / -mv.z);
-    vA = 0.15 + 0.5 * aRand;
-  }
-`;
-
-const dustFragment = /* glsl */ `
-  uniform vec3 uColor;
-  uniform float uOpacity;
-  varying float vA;
-  void main() {
-    float d = length(gl_PointCoord - 0.5);
-    float a = smoothstep(0.5, 0.0, d);
-    gl_FragColor = vec4(uColor, a * a * vA * uOpacity);
-  }
-`;
-
 /* ───────────────────────── helpers ───────────────────────── */
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -180,36 +153,6 @@ function Stage({ count }: { count: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
-
-  const dust = useMemo(() => {
-    const n = 420;
-    const g = new THREE.BufferGeometry();
-    const p = new Float32Array(n * 3);
-    const r = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      p[i * 3] = (Math.random() - 0.5) * 16;
-      p[i * 3 + 1] = (Math.random() - 0.5) * 9;
-      p[i * 3 + 2] = Math.random() * 5 - 3;
-      r[i] = Math.random();
-    }
-    g.setAttribute("position", new THREE.BufferAttribute(p, 3));
-    g.setAttribute("aRand", new THREE.BufferAttribute(r, 1));
-    const m = new THREE.ShaderMaterial({
-      vertexShader: dustVertex,
-      fragmentShader: dustFragment,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: { value: 0 },
-        uPixelRatio: { value: 1 },
-        uColor: { value: new THREE.Color(initial.beam) },
-        uOpacity: { value: 0 },
-      },
-    });
-    return { geometry: g, material: m };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const group = useRef<THREE.Group>(null);
   const motion = useRef({
@@ -310,14 +253,14 @@ function Stage({ count }: { count: number }) {
       g.scale.setScalar(s);
       const mx = calm ? 0 : m.mouse.x;
       const my = calm ? 0 : m.mouse.y;
-      const tilt = scene.anchor ? 0.55 : 0.32;
-      g.rotation.y += (mx * tilt - g.rotation.y) * Math.min(1, dt * 2.2);
-      g.rotation.x += (-my * tilt * 0.6 - g.rotation.x) * Math.min(1, dt * 2.2);
+      // Keep the halo facing the camera; just a whisper of parallax.
+      g.rotation.y += (mx * 0.1 - g.rotation.y) * Math.min(1, dt * 2.2);
+      g.rotation.x += (-my * 0.06 - g.rotation.x) * Math.min(1, dt * 2.2);
     }
 
     // mouse in group space
     const active = !calm && performance.now() - m.lastMove < 2200 ? 1 : 0;
-    m.mouseActive += (active - m.mouseActive) * Math.min(1, dt * 3);
+    m.mouseActive += (active * 0.5 - m.mouseActive) * Math.min(1, dt * 3);
     if (g) {
       const wx = (m.mouse.x * viewport.width) / 2;
       const wy = (m.mouse.y * viewport.height) / 2;
@@ -348,10 +291,6 @@ function Stage({ count }: { count: number }) {
     u.uSize.value = narrow ? 22 : 26;
 
 
-    dust.material.uniforms.uTime.value = calm ? 0 : t;
-    dust.material.uniforms.uPixelRatio.value = gl.getPixelRatio();
-    dust.material.uniforms.uColor.value.copy(m.beamColor);
-    dust.material.uniforms.uOpacity.value = 0.3 + u.uOpacity.value * 0.4;
 
     camera.position.y += ((calm ? 0 : m.mouse.y * 0.15) - camera.position.y) * Math.min(1, dt * 1.5);
     camera.lookAt(0, 0, 0);
@@ -359,7 +298,6 @@ function Stage({ count }: { count: number }) {
 
   return (
     <>
-      <points geometry={dust.geometry} material={dust.material} />
       <Network />
       <group ref={group}>
         <points geometry={geometry} material={material} />

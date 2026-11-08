@@ -49,8 +49,6 @@ export function SettingsForm({ initial }: { initial: Settings }) {
     <div className="max-w-3xl space-y-14">
       <section className="space-y-5">
         <h2 className="display text-3xl text-ink">Hero</h2>
-        {text("nowStatus", "Status chip", "The small pill above your name.")}
-        {text("heroEyebrow", "Line under your name")}
         {area("heroHeadline", "Headline", 2)}
         {area("heroSub", "Introduction", 4)}
       </section>

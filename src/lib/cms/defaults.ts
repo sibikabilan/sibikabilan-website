@@ -4,12 +4,11 @@ import { readingTime } from "@/lib/utils";
 
 export const DEFAULT_SETTINGS: Settings = {
   heroEyebrow: "Entrepreneur · Engineer · Writer",
-  heroHeadline: "I build companies, write the code myself, and write fiction when the code goes quiet.",
-  heroSub:
-    "For more than a decade I've shipped software people rely on when it matters, from a traffic operations center in Oregon to AI that talks to customers for banks and insurers. Now I'm on company number two: SuprAgent.",
+  heroHeadline: "Two companies, a decade of software people rely on, and stories that have nothing to do with either.",
+  heroSub: "Based in Bengaluru. Currently building SuprAgent.",
   nowStatus: "Building SuprAgent · Writing fiction",
   location: "Bengaluru, India",
-  email: "sibi@supragent.ai",
+  email: "sibi.kabilan@gmail.com",
   linkedin: "https://www.linkedin.com/in/sibikabilan/",
   github: "https://github.com/sibikabilan",
   x: "",

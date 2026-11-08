@@ -39,7 +39,7 @@ export function LivePortrait({ priority = false, className = "" }: { priority?: 
   }, [src, motion]);
 
   return (
-    <div className={`portrait-light relative ${className}`}>
+    <div className={`portrait-light ${className || "relative"}`}>
       <Image
         src="/media/sibi-cutout.webp"
         alt="Sibi Kabilan"

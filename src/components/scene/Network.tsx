@@ -13,7 +13,7 @@ import { ATMOSPHERES } from "@/lib/atmosphere";
  */
 
 const MAX_LINKS = 1600;
-const PULSES = 42;
+const PULSES = 0;
 
 type Layout = { pos: Float32Array; link: number; wander: number };
 
@@ -227,6 +227,11 @@ export function Network() {
     const calm = atmo.motion === "calm";
     const t = frame.clock.elapsedTime;
     const prologue = scene.mode === "prologue" && scene.target === "network";
+    // Nothing to draw outside the prologue once the fade has finished.
+    if (!prologue && uniforms.uOpacity.value < 0.004) {
+      uniforms.uOpacity.value = 0;
+      return;
+    }
     const layout = prologue ? lay.beats[Math.min(lay.beats.length - 1, Math.max(0, scene.beat))] : lay.drift;
     link.current += (layout.link - link.current) * Math.min(1, dt * 1.5);
 
@@ -330,7 +335,8 @@ export function Network() {
     const kk = Math.min(1, dt * 1.8);
     uniforms.uKey.value.lerp(tmpKey.set(c.key), kk);
     uniforms.uRim.value.lerp(tmpRim.set(c.rim), kk);
-    const target = scene.target === "halo" ? 0.16 : scene.opacity;
+    // The web only appears in the prologue; everywhere else the stage stays clean.
+    const target = prologue ? scene.opacity : 0;
     uniforms.uOpacity.value += (target - uniforms.uOpacity.value) * Math.min(1, dt * 1.6);
     uniforms.uPixelRatio.value = gl.getPixelRatio();
 
