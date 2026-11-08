@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { PublicWork } from "@/lib/cms/queries";
 import { Reveal, TitleReveal } from "@/components/ui/Reveal";
@@ -8,7 +9,7 @@ export function FictionPreview({ works, intro }: { works: PublicWork[]; intro: s
     <section id="fiction" className="relative">
       <div
         className="grade relative h-[78svh] min-h-[520px] overflow-hidden bg-black"
-        data-scene="book"
+        data-scene="network"
         data-scene-side="1"
         data-scene-opacity="0"
       >
@@ -30,7 +31,7 @@ export function FictionPreview({ works, intro }: { works: PublicWork[]; intro: s
 
       <div
         className="relative px-5 pb-32 pt-12 md:px-10"
-        data-scene="book"
+        data-scene="network"
         data-scene-side="1"
         data-scene-opacity="1"
       >
@@ -72,8 +73,15 @@ export function FictionPreview({ works, intro }: { works: PublicWork[]; intro: s
               </Link>
             </Reveal>
           </div>
-          {/* The particle book renders in this empty column. */}
-          <div aria-hidden className="hidden min-h-[460px] lg:block" />
+          <Reveal delay={0.1} className="hidden lg:block">
+            <div className="grade relative aspect-[4/5] overflow-hidden rounded-[6px] border border-line bg-black">
+              <Image src="/media/book.webp" alt="" fill sizes="40vw" className="object-cover opacity-80" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <p className="absolute bottom-5 left-6 font-mono text-[10px] uppercase tracking-[0.28em] text-white/60">
+                The drafting room · Bengaluru
+              </p>
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>

@@ -18,7 +18,7 @@ export default async function BlogIndex() {
   const tags = Array.from(new Set(posts.flatMap((p) => p.tags))).slice(0, 12);
 
   return (
-    <div data-scene="galaxy" data-scene-side="1" data-scene-opacity="0.5">
+    <div data-scene="network" data-scene-side="1" data-scene-opacity="0.5">
       <PageHeader
         eyebrow="Writing"
         title="Notes from the build."

@@ -1,14 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "motion/react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import type { Settings } from "@/lib/cms/types";
+import { atmosphereStore, sceneStore } from "@/lib/stores";
+import { HALOS } from "@/components/scene/targets";
 import { LivePortrait } from "./LivePortrait";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+/** The halo changes crowns on its own, and on click. */
+function useCrowns(ref: React.RefObject<HTMLDivElement | null>) {
+  const variant = useSyncExternalStore(sceneStore.subscribe, () => sceneStore.get().variant, () => 0);
+  const lastTouch = useRef(0);
+  const visible = useRef(true);
+
+  useEffect(() => {
+    const el = ref.current;
+    const io = el ? new IntersectionObserver(([e]) => (visible.current = e.isIntersecting)) : null;
+    if (el && io) io.observe(el);
+    const id = window.setInterval(() => {
+      const calm = atmosphereStore.get().motion === "calm";
+      if (!visible.current || calm || Date.now() - lastTouch.current < 9000) return;
+      sceneStore.set({ variant: sceneStore.get().variant + 1 });
+    }, 5200);
+    return () => {
+      window.clearInterval(id);
+      io?.disconnect();
+    };
+  }, [ref]);
+
+  const next = () => {
+    lastTouch.current = Date.now();
+    sceneStore.set({ variant: sceneStore.get().variant + 1 });
+  };
+  const i = ((variant % HALOS.length) + HALOS.length) % HALOS.length;
+  return { next, index: i, name: HALOS[i].name };
+}
+
 export function Hero({ settings }: { settings: Settings }) {
   const d = 0.25;
+  const stage = useRef<HTMLDivElement>(null);
+  const crown = useCrowns(stage);
   return (
     <section
       className="relative min-h-[100svh] overflow-hidden"
@@ -34,10 +68,30 @@ export function Hero({ settings }: { settings: Settings }) {
           transition={{ duration: 1.8, ease: EASE, delay: d }}
           className="relative order-1 mx-auto mt-4 aspect-square w-[min(88vw,460px)] lg:order-2 lg:mt-0 lg:h-full lg:w-full lg:max-w-none lg:aspect-auto"
         >
-          <div className="absolute inset-x-0 bottom-0 aspect-square w-full lg:bottom-0 lg:left-auto lg:right-[-4%] lg:w-[min(108%,860px)]">
-            {/* the halo anchor: centered on the head */}
-            <div data-scene-anchor aria-hidden className="absolute left-1/2 top-[30%] h-[56%] w-[56%] -translate-x-1/2 -translate-y-1/2" />
-            <LivePortrait priority className="h-full w-full" />
+          <div
+            ref={stage}
+            className="absolute inset-x-0 bottom-0 aspect-square w-full lg:bottom-0 lg:left-auto lg:right-[-2%] lg:w-[min(96%,780px)]"
+          >
+            {/* The halo anchor: centered just above the head, wide enough to clear it. */}
+            <div data-scene-anchor aria-hidden className="absolute left-1/2 top-[29%] h-[64%] w-[64%] -translate-x-1/2 -translate-y-1/2" />
+            {/* Backlight: the halo's glow falling on the head and shoulders. */}
+            <div
+              aria-hidden
+              className="absolute left-1/2 top-[30%] h-[78%] w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl"
+              style={{
+                background:
+                  "radial-gradient(circle, color-mix(in oklab, var(--beam) 26%, transparent) 0%, color-mix(in oklab, var(--rim) 10%, transparent) 45%, transparent 70%)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={crown.next}
+              aria-label="Change the crown"
+              title="Click to change the crown"
+              className="absolute inset-0 cursor-pointer"
+            >
+              <LivePortrait priority className="h-full w-full" />
+            </button>
           </div>
         </motion.div>
 
@@ -115,6 +169,30 @@ export function Hero({ settings }: { settings: Settings }) {
             <Link href="/blog" className="btn btn-ghost">
               Read the writing
             </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.2, delay: d + 1.2 }}
+            className="mt-8 flex flex-wrap items-center gap-3 font-mono text-[10.5px] uppercase tracking-[0.22em] text-faint"
+          >
+            <span>Wearing</span>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={crown.index}
+                initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -6, filter: "blur(4px)" }}
+                transition={{ duration: 0.45 }}
+                className="text-ink-2"
+              >
+                {String(crown.index + 1).padStart(2, "0")} · {crown.name}
+              </motion.span>
+            </AnimatePresence>
+            <button type="button" onClick={crown.next} className="rounded-full border border-line px-2.5 py-1 text-muted transition-colors hover:border-[var(--line-strong)] hover:text-ink">
+              Change crown ↻
+            </button>
           </motion.div>
         </div>
       </div>

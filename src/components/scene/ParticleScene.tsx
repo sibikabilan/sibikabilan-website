@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { atmosphereStore, sceneStore, type SceneTarget } from "@/lib/stores";
+import { atmosphereStore, sceneStore } from "@/lib/stores";
 import { ATMOSPHERES } from "@/lib/atmosphere";
-import { buildTargets, SPINNING } from "./targets";
+import { buildTargets, HALOS, ROLLING, SPINNING, type TargetKey } from "./targets";
+import { Network } from "./Network";
 
 /* ───────────────────────── shaders ───────────────────────── */
 
@@ -15,6 +16,7 @@ const particleVertex = /* glsl */ `
   uniform float uSize;
   uniform float uPixelRatio;
   uniform float uSpin;
+  uniform float uRoll;
   uniform float uMotion;
   uniform vec3 uMouse;
   attribute vec3 aFrom;
@@ -51,7 +53,8 @@ const particleVertex = /* glsl */ `
       sin(uTime * 0.25 + aRand * 10.0)
     ) * 0.02 * uMotion;
 
-    pos.xz = rot(uTime * 0.11 * uSpin) * pos.xz;
+    pos.xy = rot(uRoll) * pos.xy;
+    pos.xz = rot(uSpin) * pos.xz;
 
     vec2 d = pos.xy - uMouse.xy;
     float push = smoothstep(1.15, 0.0, length(d)) * uMouse.z;
@@ -83,28 +86,6 @@ const particleFragment = /* glsl */ `
     vec3 col = mix(uRim, uKey, smoothstep(0.12, 0.88, vLight));
     col = mix(col, vec3(1.0), 0.22 * step(0.94, vRand));
     gl_FragColor = vec4(col, a * vAlpha * uOpacity);
-  }
-`;
-
-const beamVertex = /* glsl */ `
-  varying vec2 vUv;
-  void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-`;
-
-const beamFragment = /* glsl */ `
-  uniform vec3 uColor;
-  uniform float uOpacity;
-  uniform float uTime;
-  varying vec2 vUv;
-  void main() {
-    vec2 p = vUv - vec2(0.62, 1.08);
-    float ang = atan(p.x, -p.y);
-    float cone = smoothstep(0.36, 0.0, abs(ang + 0.12));
-    float fall = smoothstep(1.25, 0.05, length(p));
-    float streaks = 0.82 + 0.18 * sin(ang * 90.0 + uTime * 0.4);
-    float flick = 0.92 + 0.08 * sin(uTime * 1.3) * sin(uTime * 0.71 + 1.0);
-    float a = cone * fall * streaks * flick * 0.42;
-    gl_FragColor = vec4(uColor, a * uOpacity);
   }
 `;
 
@@ -188,29 +169,12 @@ function Stage({ count }: { count: number }) {
           uSize: { value: 30 },
           uPixelRatio: { value: 1 },
           uSpin: { value: 0 },
+          uRoll: { value: 0 },
           uMotion: { value: 1 },
           uMouse: { value: new THREE.Vector3(99, 99, 0) },
           uKey: { value: new THREE.Color(initial.key) },
           uRim: { value: new THREE.Color(initial.rim) },
           uOpacity: { value: 0 },
-        },
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  const beam = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader: beamVertex,
-        fragmentShader: beamFragment,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        uniforms: {
-          uColor: { value: new THREE.Color(initial.beam) },
-          uOpacity: { value: 0 },
-          uTime: { value: 0 },
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,7 +213,9 @@ function Stage({ count }: { count: number }) {
 
   const group = useRef<THREE.Group>(null);
   const motion = useRef({
-    current: null as SceneTarget | null,
+    current: null as TargetKey | null,
+    spinSpeed: 0,
+    rollSpeed: 0,
     progress: 1,
     duration: 2.6,
     mouse: new THREE.Vector2(0, 0),
@@ -271,7 +237,7 @@ function Stage({ count }: { count: number }) {
   }, []);
 
   /** Freezes the in-flight interpolation into aFrom, so a new move starts where particles are. */
-  function retarget(next: SceneTarget) {
+  function retarget(next: TargetKey) {
     if (!targets) return;
     const m = motion.current;
     const from = geometry.getAttribute("aFrom") as THREE.BufferAttribute;
@@ -315,9 +281,11 @@ function Stage({ count }: { count: number }) {
     const u = material.uniforms;
     const t = state.clock.elapsedTime;
 
-    if (targets && scene.target !== m.current) {
-      m.duration = calm ? 1.2 : m.current === null ? 3.4 : 2.6;
-      retarget(scene.target);
+    const wanted: TargetKey = HALOS[((scene.variant % HALOS.length) + HALOS.length) % HALOS.length].key;
+    if (targets && wanted !== m.current) {
+      const haloToHalo = m.current?.startsWith("halo-") && wanted.startsWith("halo-");
+      m.duration = calm ? 1.2 : m.current === null ? 3.2 : haloToHalo ? 1.9 : 2.6;
+      retarget(wanted);
     }
     if (m.progress < 1) m.progress = Math.min(1, m.progress + dt / m.duration);
 
@@ -331,7 +299,7 @@ function Stage({ count }: { count: number }) {
       // Pin the light to a DOM element (the portrait's head) and size it to match.
       scale = (scene.anchor.size * viewport.width * 0.5) / 2.05;
       xTarget = (scene.anchor.x * viewport.width) / 2;
-      yTarget = (scene.anchor.y * viewport.height) / 2 - 0.55 * scale;
+      yTarget = (scene.anchor.y * viewport.height) / 2;
       follow = 9;
     }
     const g = group.current;
@@ -342,8 +310,9 @@ function Stage({ count }: { count: number }) {
       g.scale.setScalar(s);
       const mx = calm ? 0 : m.mouse.x;
       const my = calm ? 0 : m.mouse.y;
-      g.rotation.y += (mx * 0.32 - g.rotation.y) * Math.min(1, dt * 2.2);
-      g.rotation.x += (-my * 0.12 - g.rotation.x) * Math.min(1, dt * 2.2);
+      const tilt = scene.anchor ? 0.55 : 0.32;
+      g.rotation.y += (mx * tilt - g.rotation.y) * Math.min(1, dt * 2.2);
+      g.rotation.x += (-my * tilt * 0.6 - g.rotation.x) * Math.min(1, dt * 2.2);
     }
 
     // mouse in group space
@@ -363,23 +332,26 @@ function Stage({ count }: { count: number }) {
     u.uKey.value.copy(m.keyColor);
     u.uRim.value.copy(m.rimColor);
 
+    // Speeds ease, angles accumulate: changing crowns never whips the ring around.
     const spinTarget = m.current ? SPINNING[m.current] : 0;
-    u.uSpin.value += (spinTarget - u.uSpin.value) * Math.min(1, dt * 0.8);
+    m.spinSpeed += (spinTarget - m.spinSpeed) * Math.min(1, dt * 0.8);
+    const rollTarget = m.current && !calm ? ROLLING[m.current] : 0;
+    m.rollSpeed += (rollTarget - m.rollSpeed) * Math.min(1, dt * 0.8);
+    u.uSpin.value += dt * 0.11 * m.spinSpeed;
+    u.uRoll.value += dt * 0.12 * m.rollSpeed;
     u.uMotion.value += ((calm ? 0.15 : 1) - u.uMotion.value) * Math.min(1, dt * 2);
-    u.uOpacity.value += (scene.opacity - u.uOpacity.value) * Math.min(1, dt * 2.2);
+    const haloOpacity = scene.target === "halo" ? 1 : 0;
+    u.uOpacity.value += (haloOpacity - u.uOpacity.value) * Math.min(1, dt * 2.2);
     u.uTime.value = t;
     u.uProgress.value = m.progress;
     u.uPixelRatio.value = gl.getPixelRatio();
     u.uSize.value = narrow ? 22 : 26;
 
-    beam.uniforms.uTime.value = t;
-    beam.uniforms.uColor.value.copy(m.beamColor);
-    beam.uniforms.uOpacity.value = u.uOpacity.value * (scene.target === "halo" ? 0.75 : 0.4);
 
     dust.material.uniforms.uTime.value = calm ? 0 : t;
     dust.material.uniforms.uPixelRatio.value = gl.getPixelRatio();
     dust.material.uniforms.uColor.value.copy(m.beamColor);
-    dust.material.uniforms.uOpacity.value = Math.max(0.35, u.uOpacity.value);
+    dust.material.uniforms.uOpacity.value = 0.3 + u.uOpacity.value * 0.4;
 
     camera.position.y += ((calm ? 0 : m.mouse.y * 0.15) - camera.position.y) * Math.min(1, dt * 1.5);
     camera.lookAt(0, 0, 0);
@@ -387,10 +359,8 @@ function Stage({ count }: { count: number }) {
 
   return (
     <>
-      <mesh position={[0, 0.4, -3]} material={beam}>
-        <planeGeometry args={[18, 11]} />
-      </mesh>
       <points geometry={dust.geometry} material={dust.material} />
+      <Network />
       <group ref={group}>
         <points geometry={geometry} material={material} />
       </group>

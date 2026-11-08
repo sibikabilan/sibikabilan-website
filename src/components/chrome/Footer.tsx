@@ -11,7 +11,7 @@ export function Footer({ settings }: { settings: Settings }) {
   ].filter((s) => s.href);
 
   return (
-    <footer className="relative z-10 border-t border-line" data-scene="galaxy" data-scene-side="0" data-scene-opacity="0.9">
+    <footer className="relative z-10 border-t border-line" data-scene="network" data-scene-side="0" data-scene-opacity="0.9">
       <div className="mx-auto grid max-w-[1400px] gap-10 px-5 py-14 md:grid-cols-[1.4fr_1fr_1fr] md:px-10">
         <div>
           <p className="display text-4xl text-ink">

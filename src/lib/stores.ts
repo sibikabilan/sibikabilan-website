@@ -87,7 +87,9 @@ export function atmosphereColors(id: AtmosphereId) {
 
 /* ───────── scene direction ───────── */
 
-export type SceneTarget = "halo" | "threads" | "agent" | "ribbon" | "book" | "galaxy";
+/** "halo" shows the crown behind the portrait; "network" is the connected web of light everywhere else. */
+export type SceneTarget = "halo" | "network";
+export type NetworkMode = "drift" | "prologue";
 
 export interface SceneState {
   target: SceneTarget;
@@ -96,6 +98,11 @@ export interface SceneState {
   opacity: number;
   /** Optional DOM anchor in normalized device coords, so the light sits exactly behind an element. */
   anchor: { x: number; y: number; size: number } | null;
+  /** Which crown the halo is wearing (cycles in the hero). */
+  variant: number;
+  mode: NetworkMode;
+  /** Prologue beat, which choreographs the network. */
+  beat: number;
 }
 
 export const sceneStore = createStore<SceneState>({
@@ -103,6 +110,9 @@ export const sceneStore = createStore<SceneState>({
   side: 1,
   opacity: 1,
   anchor: null,
+  variant: 0,
+  mode: "drift",
+  beat: 0,
 });
 
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {

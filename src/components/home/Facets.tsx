@@ -8,7 +8,7 @@ export function Facets() {
     <section
       id="facets"
       className="relative px-5 py-28 md:px-10 md:py-40"
-      data-scene="galaxy"
+      data-scene="network"
       data-scene-side="0"
       data-scene-opacity="0.35"
     >

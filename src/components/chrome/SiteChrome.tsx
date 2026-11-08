@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Lenis from "lenis";
-import { initAtmosphere, sceneStore, useAtmosphere, type SceneTarget } from "@/lib/stores";
+import { initAtmosphere, sceneStore, useAtmosphere } from "@/lib/stores";
 import type { AtmosphereId } from "@/lib/atmosphere";
 
 const ParticleScene = dynamic(() => import("@/components/scene/ParticleScene"), { ssr: false });
@@ -24,7 +24,7 @@ function useSceneDirector() {
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-scene]"));
     if (!nodes.length) {
-      sceneStore.set({ target: "galaxy", side: 0, opacity: 0.35, anchor: null });
+      sceneStore.set({ target: "network", side: 0, opacity: 0.3, anchor: null, mode: "drift" });
       return;
     }
     let active: HTMLElement = nodes[0];
@@ -41,7 +41,8 @@ function useSceneDirector() {
     const apply = (el: HTMLElement) => {
       active = el;
       sceneStore.set({
-        target: (el.dataset.scene as SceneTarget) ?? "galaxy",
+        target: el.dataset.scene === "halo" ? "halo" : "network",
+        mode: el.dataset.sceneMode === "prologue" ? "prologue" : "drift",
         side: Number(el.dataset.sceneSide ?? 0),
         opacity: Number(el.dataset.sceneOpacity ?? 1),
         anchor: measure(),

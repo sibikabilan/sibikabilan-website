@@ -64,66 +64,93 @@ export const NOW_WORK = {
   with: "Built with my co founder Nandini Muthuraman and the team at Biome.",
 };
 
+export interface ReelLogo {
+  src?: string;
+  /** Text shown next to (or instead of) the mark. */
+  label: string;
+  /** Keep the logo's own colours instead of the white treatment. */
+  color?: boolean;
+  /** Wordmark only: no image, set in type. */
+  wordmark?: boolean;
+}
+
 export interface ReelFrame {
   years: string;
-  role: string;
   place: string;
-  story: string;
-  lesson: string;
+  title: string;
+  body: string;
+  line: string;
   image: string;
   alt: string;
+  logos: ReelLogo[];
+  overlay?: "blueprint";
 }
 
 export const REEL: ReelFrame[] = [
   {
     years: "2013 to 2017",
-    role: "Software Developer",
-    place: "Oregon State University · Corvallis",
-    story:
-      "Studied computer science and shipped my first production software, for the Oregon Department of Transportation's Transportation Operations Center. Moved a desktop system to the web and kept both alive for the operators who depended on them.",
-    lesson: "Software people rely on doesn't get a maintenance window from reality.",
-    image: "/media/era-2013.webp",
-    alt: "A dark operations center with a wall of traffic camera monitors",
+    place: "Corvallis, Oregon",
+    title: "Where I learned to build.",
+    body:
+      "Oregon State gave me a campus and, unusually early, real users. I wrote software for the Oregon Department of Transportation's traffic operations and worked on projects for the USDA, the California Board of Education and HP. Operators, analysts, civil servants: people who just needed the thing to work.",
+    line: "Software people rely on doesn't get a maintenance window.",
+    image: "/media/era-osu.webp",
+    alt: "A silhouette on the lawn in front of the Memorial Union at Oregon State University",
+    logos: [
+      { src: "/logos/oregon-state.svg", label: "Oregon State University" },
+      { src: "/logos/odot.svg", label: "Oregon Department of Transportation" },
+      { src: "/logos/usda.svg", label: "USDA" },
+      { label: "California Board of Education", wordmark: true },
+      { src: "/logos/hp.svg", label: "HP" },
+    ],
   },
   {
     years: "2017 to 2018",
-    role: "AI Software Architect",
     place: "Independent",
-    story:
-      "Five clients, two of them in the Fortune 500, across twelve projects in machine learning, content distribution and data analytics.",
-    lesson: "Design for the person who runs it after you leave.",
+    title: "Drawing systems for other people to run.",
+    body:
+      "Two years as an independent architect across a dozen projects in machine learning, content distribution and analytics. I started judging a design by how quiet things were after I handed it over.",
+    line: "Design for whoever is on call when you're gone.",
     image: "/media/era-2017.webp",
-    alt: "System architecture diagrams drawn on a glass wall above a city at dusk",
+    alt: "System diagrams on a glass wall above a city at dusk",
+    logos: [],
+    overlay: "blueprint",
   },
   {
     years: "2018 to 2021",
-    role: "Co founder & CEO",
-    place: "KayaDev AI · Bengaluru",
-    story:
-      "My first company. Computer vision and analytics products for enterprise teams, including Fortune 500s. I owned the whole stack of a startup: product, architecture, sales and the business.",
-    lesson: "Nobody buys AI. They buy outcomes they can trust in production.",
+    place: "Bengaluru",
+    title: "The first company.",
+    body:
+      "KayaDev AI taught cameras to understand what they were seeing, for enterprise teams who needed it to work on a Monday morning, not in a demo. Three years as CEO taught me the difference between a model and a product.",
+    line: "Nobody buys AI. They buy an outcome they can trust.",
     image: "/media/era-2018.webp",
     alt: "A street scene projected on a wall with computer vision tracking boxes",
+    logos: [{ label: "KayaDev AI", wordmark: true }],
   },
   {
     years: "2022 to 2024",
-    role: "Product Owner, Risk and AI",
-    place: "Servify · India and North America",
-    story:
-      "Owned device protection programs for Samsung Care+, AppleCare+ and Vivo V Shield. Built the engine that catches transactional risk and fraud, and brought generative AI into production through chatbots, IVRs and voicebots.",
-    lesson: "Decide what it must never do before deciding what it should do.",
+    place: "India and North America",
+    title: "Real money, real people.",
+    body:
+      "At Servify I looked after device protection for Samsung and Apple customers. I built the system that watched for fraud, and put generative AI in front of customers through chat, IVR and voice. When it's someone's phone and someone's money, there is no small mistake.",
+    line: "Decide what it must never do before what it should do.",
     image: "/media/era-2022.webp",
     alt: "Rows of glowing phones beneath streams of light like transactions",
+    logos: [
+      { src: "/logos/samsung.svg", label: "Care+" },
+      { src: "/logos/apple.svg", label: "AppleCare+" },
+    ],
   },
   {
     years: "2025 to now",
-    role: "Founder",
-    place: "SuprAgent · Bengaluru",
-    story:
-      "Founder again. Building an agent that talks to customers for banks, lenders, insurers and wealth firms, with my co founder Nandini Muthuraman and the team at Biome.",
-    lesson: "I write the agent's code, and I answer for what it does.",
+    place: "Bengaluru",
+    title: "Founder, again.",
+    body:
+      "Everything above, pointed at one problem: the moment a customer goes quiet. An agent that talks to people the way your best person would, built with my co founder Nandini Muthuraman and the team at Biome.",
+    line: "I write the agent's code, and I answer for what it does.",
     image: "/media/era-2025.webp",
     alt: "A ribbon of light flowing from a chat bubble through a voice wave into a phone",
+    logos: [{ src: "/logos/supragent.webp", label: "SuprAgent", color: true }],
   },
 ];
 

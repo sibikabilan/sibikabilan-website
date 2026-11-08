@@ -30,7 +30,7 @@ export default async function ChapterPage({ params }: Props) {
   const html = await markdownToHtml(data.content);
 
   return (
-    <div data-scene="book" data-scene-side="0" data-scene-opacity="0">
+    <div data-scene="network" data-scene-side="0" data-scene-opacity="0">
       <div className="h-[var(--nav-h)]" />
       <Reader
         workSlug={data.work.slug}

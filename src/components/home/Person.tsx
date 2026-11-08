@@ -1,8 +1,8 @@
-import Image from "next/image";
 import type { Settings } from "@/lib/cms/types";
 import { PRINCIPLES } from "@/lib/site";
 import { markdownToHtml } from "@/lib/markdown";
 import { Reveal, TitleReveal } from "@/components/ui/Reveal";
+import { CodePortrait } from "./CodePortrait";
 
 function parseNow(list: string | undefined) {
   return (list ?? "")
@@ -23,26 +23,20 @@ export async function Person({ settings }: { settings: Settings }) {
     <section
       id="about"
       className="relative px-5 py-28 md:px-10 md:py-40"
-      data-scene="threads"
+      data-scene="network"
       data-scene-side="0"
       data-scene-opacity="0.2"
     >
       <div className="mx-auto grid max-w-[1400px] gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
         <Reveal className="relative lg:sticky lg:top-28 lg:self-start">
           <div
-            className="portrait-light relative aspect-[4/5] overflow-hidden rounded-[6px]"
+            className="relative overflow-hidden rounded-[6px] pt-[6%]"
             style={{
               background:
-                "radial-gradient(70% 60% at 60% 35%, color-mix(in oklab, var(--beam) 16%, var(--bg-2)), var(--bg) 75%)",
+                "radial-gradient(70% 60% at 50% 40%, color-mix(in oklab, var(--beam) 12%, var(--bg-2)), var(--bg) 75%)",
             }}
           >
-            <Image
-              src="/media/sibi-cutout.webp"
-              alt="Sibi Kabilan"
-              fill
-              sizes="(min-width: 1024px) 38vw, 90vw"
-              className="scale-[1.35] object-cover object-[50%_18%]"
-            />
+            <CodePortrait />
           </div>
           <div className="mt-3 flex justify-between font-mono text-[10px] uppercase tracking-[0.26em] text-faint">
             <span>Sibi Kabilan</span>

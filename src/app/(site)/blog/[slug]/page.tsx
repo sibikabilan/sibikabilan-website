@@ -54,7 +54,7 @@ export default async function PostPage({ params }: Props) {
   };
 
   return (
-    <article data-scene="threads" data-scene-side="0" data-scene-opacity="0.18">
+    <article data-scene="network" data-scene-side="0" data-scene-opacity="0.18">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <ReadingProgress />
       <header className="mx-auto max-w-[980px] px-5 pt-[calc(var(--nav-h)+5rem)] text-center md:px-10 md:pt-[calc(var(--nav-h)+7rem)]">

@@ -9,7 +9,7 @@ export function WritingPreview({ posts, intro }: { posts: PostMeta[]; intro: str
     <section
       id="writing"
       className="relative px-5 py-28 md:px-10 md:py-36"
-      data-scene="galaxy"
+      data-scene="network"
       data-scene-side="1"
       data-scene-opacity="0.45"
     >

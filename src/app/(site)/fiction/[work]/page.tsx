@@ -36,7 +36,7 @@ export default async function WorkPage({ params }: Props) {
   const first = work.chapters[0];
 
   return (
-    <div data-scene="book" data-scene-side="-1" data-scene-opacity="0.35">
+    <div data-scene="network" data-scene-side="-1" data-scene-opacity="0.35">
       <section className="mx-auto grid max-w-[1400px] gap-12 px-5 pb-20 pt-[calc(var(--nav-h)+4rem)] md:grid-cols-[minmax(240px,380px)_1fr] md:gap-20 md:px-10 md:pt-[calc(var(--nav-h)+6rem)]">
         <Reveal>
           <WorkCover title={work.title} cover={work.cover} />

@@ -7,7 +7,7 @@ export function Contact({ settings }: { settings: Settings }) {
     <section
       id="contact"
       className="relative flex min-h-[100svh] items-center overflow-hidden bg-black"
-      data-scene="galaxy"
+      data-scene="network"
       data-scene-side="0"
       data-scene-opacity="0"
     >

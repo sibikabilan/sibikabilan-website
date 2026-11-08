@@ -238,9 +238,19 @@ html.lenis body {
    transparent area in Chromium. The still sits underneath with the same
    silhouette, so the rim shows either way. */
 .portrait-light img {
-  filter: drop-shadow(0 0 1px color-mix(in oklab, var(--rim) 50%, transparent))
-    drop-shadow(-16px -8px 30px color-mix(in oklab, var(--rim) 20%, transparent)) contrast(1.03) saturate(0.94);
+  filter: drop-shadow(0 0 1.5px color-mix(in oklab, var(--beam) 65%, transparent))
+    drop-shadow(0 -10px 26px color-mix(in oklab, var(--beam) 22%, transparent))
+    drop-shadow(-18px -6px 34px color-mix(in oklab, var(--rim) 24%, transparent)) contrast(1.03) saturate(0.94);
   transition: filter 1.2s var(--ease-cine);
+}
+
+.code-portrait {
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 97%),
+    linear-gradient(to right, transparent 0%, #000 8%, #000 90%, transparent 99%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 97%),
+    linear-gradient(to right, transparent 0%, #000 8%, #000 90%, transparent 99%);
+  mask-composite: intersect;
 }
 
 /* Film frame chrome */
@@ -501,3 +511,4 @@ html.lenis body {
     scroll-behavior: auto !important;
   }
 }
+

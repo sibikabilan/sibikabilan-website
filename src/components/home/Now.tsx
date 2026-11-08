@@ -7,7 +7,7 @@ export function Now({ companyUrl }: { companyUrl: string }) {
     <section
       id="now"
       className="relative px-5 py-28 md:px-10 md:py-36"
-      data-scene="agent"
+      data-scene="network"
       data-scene-side="0"
       data-scene-opacity="0.22"
     >

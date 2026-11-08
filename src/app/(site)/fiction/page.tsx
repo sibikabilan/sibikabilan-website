@@ -17,7 +17,7 @@ export default async function FictionLibrary() {
   if (!settings.showFiction) notFound();
 
   return (
-    <div data-scene="book" data-scene-side="1" data-scene-opacity="0.75">
+    <div data-scene="network" data-scene-side="1" data-scene-opacity="0.75">
       <PageHeader
         eyebrow="Fiction · The library"
         title="Elsewhere, I write fiction."
