@@ -1,41 +1,17 @@
 import type { MetadataRoute } from "next";
+import { getPublishedPosts, getPublishedWorks } from "@/lib/cms/queries";
+import { SITE } from "@/lib/site";
 
-const BASE_URL = "https://sibikabilan.com";
-
-const blogSlugs = [
-  "architecture-of-modern-ai-agents",
-  "building-for-fortune-500s",
-  "dynamic-ui-next-frontier",
-];
-
-export default function sitemap(): MetadataRoute.Sitemap {
-  const staticPages: MetadataRoute.Sitemap = [
-    {
-      url: BASE_URL,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 1,
-    },
-    {
-      url: `${BASE_URL}/blog`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/fiction`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const [posts, works] = await Promise.all([getPublishedPosts(), getPublishedWorks()]);
+  return [
+    { url: SITE.url, changeFrequency: "weekly", priority: 1 },
+    { url: `${SITE.url}/blog`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE.url}/fiction`, changeFrequency: "weekly", priority: 0.8 },
+    ...posts.map((p) => ({ url: `${SITE.url}/blog/${p.slug}`, lastModified: p.updatedAt, priority: 0.7 })),
+    ...works.map((w) => ({ url: `${SITE.url}/fiction/${w.slug}`, lastModified: w.updatedAt, priority: 0.6 })),
+    ...works.flatMap((w) =>
+      w.chapters.map((c) => ({ url: `${SITE.url}/fiction/${w.slug}/${c.slug}`, lastModified: c.updatedAt, priority: 0.5 }))
+    ),
   ];
-
-  const blogPages: MetadataRoute.Sitemap = blogSlugs.map((slug) => ({
-    url: `${BASE_URL}/blog/${slug}`,
-    lastModified: new Date(),
-    changeFrequency: "monthly" as const,
-    priority: 0.7,
-  }));
-
-  return [...staticPages, ...blogPages];
 }

@@ -1,25 +1,26 @@
-import type { Metadata } from "next";
-import { Bodoni_Moda, Jost, JetBrains_Mono } from "next/font/google";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { SITE } from "@/lib/constants";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Instrument_Serif, Newsreader } from "next/font/google";
+import { SITE } from "@/lib/site";
+import { getSettings } from "@/lib/cms/queries";
 import "./globals.css";
 
-const bodoniModa = Bodoni_Moda({
-  variable: "--font-bodoni-moda",
+const instrument = Instrument_Serif({
+  variable: "--font-instrument",
   subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const jost = Jost({
-  variable: "--font-jost",
-  subsets: ["latin"],
-  display: "swap",
-});
+const geist = Geist({ variable: "--font-geist", subsets: ["latin"], display: "swap" });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
+
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
   subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
   display: "swap",
 });
 
@@ -27,23 +28,25 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: {
     default: SITE.title,
-    template: `%s | ${SITE.name}`,
+    template: `%s · ${SITE.name}`,
   },
   description: SITE.description,
   keywords: [
     "Sibi Kabilan",
-    "AI Architect",
-    "Entrepreneur",
-    "Machine Learning",
-    "Deep Learning",
-    "Computer Vision",
+    "AI founder",
     "SuprAgent",
+    "AI agents",
+    "Agentic UI",
+    "financial services AI",
     "KayaDev AI",
-    "Full Stack Developer",
-    "AI Consulting",
+    "fiction",
   ],
-  authors: [{ name: SITE.name }],
+  authors: [{ name: SITE.name, url: SITE.url }],
   creator: SITE.name,
+  alternates: {
+    canonical: "/",
+    types: { "application/rss+xml": [{ url: "/rss.xml", title: "Sibi Kabilan, writing" }] },
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -51,49 +54,34 @@ export const metadata: Metadata = {
     title: SITE.title,
     description: SITE.description,
     siteName: SITE.name,
-    images: [
-      {
-        url: SITE.ogImage,
-        width: 1200,
-        height: 630,
-        alt: SITE.title,
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE.title,
     description: SITE.description,
-    images: [SITE.ogImage],
   },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
+  robots: { index: true, follow: true },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  themeColor: "#09090b",
+  colorScheme: "dark",
+};
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // The server renders the site's default lighting; a visitor's saved choice relights it on load.
+  const { defaultAtmosphere } = await getSettings();
+
   return (
     <html
       lang="en"
-      className={`${bodoniModa.variable} ${jost.variable} ${jetbrainsMono.variable} antialiased`}
+      data-atmosphere={defaultAtmosphere}
+      data-grain="on"
+      data-motion="cinematic"
+      suppressHydrationWarning
+      className={`${instrument.variable} ${geist.variable} ${geistMono.variable} ${newsreader.variable}`}
     >
-      <body className="min-h-screen bg-background text-foreground">
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -18,7 +18,7 @@ export async function markdownToHtml(content: string): Promise<string> {
       properties: { className: ["heading-anchor"] },
     })
     .use(rehypePrettyCode, {
-      theme: "github-light",
+      theme: "vesper",
       keepBackground: false,
     })
     .use(rehypeStringify, { allowDangerousHtml: true })
