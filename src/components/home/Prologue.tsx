@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { PROLOGUE } from "@/lib/site";
 import { useNearViewport } from "@/lib/useNearViewport";
 import { useStepScroll } from "@/lib/useStepScroll";
+import { sceneStore } from "@/lib/stores";
 
 // three.js and the smoke shader load only as the prologue approaches, not with the page.
 const ReadingLight = dynamic(() => import("./ReadingLight").then((m) => m.ReadingLight), { ssr: false });
@@ -59,6 +60,15 @@ export function Prologue() {
   const near = useNearViewport(ref);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end end"] });
   useStepScroll(ref, STOPS.length);
+
+  // The hero's dust is this room's smoke: it stays on while the prologue is in view and
+  // thins away as the prologue leaves (see ParticleScene).
+  const { scrollYProgress: leaving } = useScroll({ target: ref, offset: ["end end", "end start"] });
+  useMotionValueEvent(leaving, "change", (p) => sceneStore.set({ field: 1 - Math.min(1, Math.max(0, p)) }));
+  useEffect(() => {
+    sceneStore.set({ field: 1 - Math.min(1, Math.max(0, leaving.get())) });
+    return () => sceneStore.set({ field: 0 });
+  }, [leaving]);
   // A function transform keeps the word fades on this section's progress. Motion would
   // otherwise hand opacity to a native scroll timeline measured over the whole page.
   const progress = useTransform(scrollYProgress, (v) => v);
@@ -120,6 +130,7 @@ export function Prologue() {
     if (!w) return;
     const r = w.getBoundingClientRect();
     lamp.current = { x: (r.left + r.width / 2) / window.innerWidth, y: (r.top + r.height / 2) / window.innerHeight };
+    sceneStore.set({ lamp: { x: r.left + r.width / 2, y: r.top + r.height / 2 }, warmth: Math.min(1, Math.max(0, p)) });
   });
 
   return (

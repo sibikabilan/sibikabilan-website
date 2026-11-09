@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, type CSSProperties } from "react";
-import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
+import { motion, useScroll, useSpring, useTransform, type MotionValue } from "motion/react";
 import { Book } from "@/components/fiction/Book";
 import { useCalm } from "@/components/fiction/useCalm";
 import { introWithoutTitle } from "@/components/fiction/volume";
@@ -243,8 +243,12 @@ function DeskBookView({
  */
 function ScrollFiction({ intro, book }: { intro: string; book: DeskBook }) {
   const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress: p } = useScroll({ target: ref, offset: ["start end", "end end"] });
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end end"] });
   useStepScroll(ref, STOPS, "(pointer: coarse)");
+  // The book follows the scroll on a soft spring, so however fast the page moves (a flick,
+  // or a phone's swipe that lands in well under a second) the board still swings open and
+  // the leaves still riffle over at their own pace, settling a beat after the page does.
+  const p = useSpring(scrollYProgress, { stiffness: 14, damping: 10, mass: 1, restDelta: 0.0005 });
 
   const titleIn = useSegment(p, 0.1, 0.32, 0, 1);
   const titleY = useSegment(p, 0.1, 0.36, 36, 0);
@@ -278,7 +282,7 @@ function ScrollFiction({ intro, book }: { intro: string; book: DeskBook }) {
       id="fiction"
       data-spotlight="off"
       aria-labelledby="fiction-title"
-      className="relative h-[190svh] md:h-[250svh]"
+      className="relative h-[190svh] md:h-[290svh]"
       data-scene="network"
       data-scene-side="0"
       data-scene-opacity="0.18"

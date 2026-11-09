@@ -229,10 +229,11 @@ html.lenis body {
 
 /* The real portrait: fades into the stage at the bottom, with a cool rim light. */
 .portrait-light {
-  -webkit-mask-image: linear-gradient(to bottom, #000 66%, transparent 98%),
+  /* The box runs 14% above his square (see Hero), so these stops fall where 66% and 98% of the square do. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 98.2%),
     linear-gradient(to right, transparent 0%, #000 16%, #000 84%, transparent 100%);
   -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to bottom, #000 66%, transparent 98%),
+  mask-image: linear-gradient(to bottom, #000 70%, transparent 98.2%),
     linear-gradient(to right, transparent 0%, #000 16%, #000 84%, transparent 100%);
   mask-composite: intersect;
 }

@@ -1,12 +1,15 @@
 /**
- * The shadows the hero's particle field can become: a figure standing behind
- * the portrait, larger than life. First his own outline (traced from the real
- * cutout), then the builder, the engineer and the writer, one for each line
- * of the opening. Each is drawn from a small black and white mask in
- * /media/silhouettes and returns `count` xyz triplets in world units.
+ * The shapes the hero's particle field can become: his own outline, a third
+ * larger than him, standing just behind the portrait so it shows as a band of
+ * light round his head and off his shoulders. Then the same shadow in the
+ * same pose with one thing added for two of the opening's lines: a hammer on
+ * the shoulder (build), headphones (engineer). For the last (write), an open
+ * book standing behind him, drawn in line. Each is traced from a small black
+ * and white mask in /media/shadows (made by scripts/build-shadows.mjs) and
+ * returns `count` xyz triplets in world units.
  *
- * The frame is 3:4. x runs -2.05..2.05 across its width (2.05 is half the
- * anchor's width, see ParticleScene) and y up the frame, centred on it.
+ * x runs -2.05..2.05 across the frame's width (2.05 is half the anchor's
+ * width, see ParticleScene) and y up the frame, centred on it.
  */
 
 type Rng = () => number;
@@ -35,11 +38,17 @@ export interface Target {
   bright: Float32Array;
 }
 
+/**
+ * /media is cached for a month (see next.config), so the masks carry a version:
+ * bump it whenever scripts/build-shadows.mjs is run again.
+ */
+const V = "?v=5";
+
 export const SILHOUETTES = [
-  { key: "you", name: "His own shadow", src: "/media/silhouettes/you.png" },
-  { key: "builder", name: "The builder", src: "/media/silhouettes/builder.png" },
-  { key: "engineer", name: "The engineer", src: "/media/silhouettes/engineer.png" },
-  { key: "writer", name: "The writer", src: "/media/silhouettes/writer.png" },
+  { key: "you", name: "His own shadow", src: `/media/shadows/you.png${V}` },
+  { key: "builder", name: "The builder", src: `/media/shadows/builder.png${V}` },
+  { key: "engineer", name: "The engineer", src: `/media/shadows/engineer.png${V}` },
+  { key: "writer", name: "The open book", src: `/media/shadows/writer.png${V}` },
 ] as const;
 
 export type TargetKey = (typeof SILHOUETTES)[number]["key"];
@@ -53,6 +62,8 @@ interface Mask {
   /** Pixel indices on the outline, and inside the figure. */
   edge: Uint32Array;
   fill: Uint32Array;
+  /** Each pixel's tone, 0 to 1: grey in the mask draws fainter, with fewer grains. */
+  tone: Float32Array;
 }
 
 async function loadMask(src: string): Promise<Mask> {
@@ -68,6 +79,8 @@ async function loadMask(src: string): Promise<Mask> {
   if (!ctx) throw new Error("no 2d context");
   ctx.drawImage(img, 0, 0);
   const px = ctx.getImageData(0, 0, w, h).data;
+  const tone = new Float32Array(w * h);
+  for (let i = 0; i < tone.length; i++) tone[i] = px[i * 4] > 240 ? 1 : px[i * 4] / 255;
   // Past the bottom edge counts as inside: the figure is cropped there, not outlined.
   const inside = (x: number, y: number) => (y >= h ? x >= 0 && x < w : x >= 0 && x < w && y >= 0 && px[(y * w + x) * 4] > 127);
   const edge: number[] = [];
@@ -80,20 +93,27 @@ async function loadMask(src: string): Promise<Mask> {
       (rim ? edge : fill).push(y * w + x);
     }
   }
-  return { w, h, edge: Uint32Array.from(edge), fill: Uint32Array.from(fill) };
+  return { w, h, edge: Uint32Array.from(edge), fill: Uint32Array.from(fill), tone };
 }
 
 function silhouette(mask: Mask, count: number, seed: number): Target {
   const r = mulberry32(seed);
   const pos = new Float32Array(count * 3);
   const bright = new Float32Array(count);
-  const { w, h, edge, fill } = mask;
+  const { w, h, edge, fill, tone } = mask;
   const unit = (HALF * 2) / w;
-  const pick = (list: Uint32Array) => list[Math.floor(r() * list.length)];
+  // A shape drawn only in fine line (the book) can have no inside to speak of: use its lines.
+  const body = fill.length ? fill : edge;
+  // Fainter pixels are picked less often, in proportion to their tone.
+  const pick = (list: Uint32Array) => {
+    let i = list[Math.floor(r() * list.length)];
+    for (let tries = 0; tries < 6 && tone[i] < 1 && r() > tone[i] * tone[i]; tries++) i = list[Math.floor(r() * list.length)];
+    return i;
+  };
   for (let n = 0; n < count; n++) {
     const k = r();
     const fromEdge = k < 0.52 || k >= 0.9;
-    const i = pick(fromEdge ? edge : fill);
+    const i = pick(fromEdge ? edge : body);
     let x = (i % w) + r() - 0.5;
     let y = Math.floor(i / w) + r() - 0.5;
     let z = 0;
@@ -126,7 +146,7 @@ function silhouette(mask: Mask, count: number, seed: number): Target {
     pos[n * 3] = (x - w / 2) * unit;
     pos[n * 3 + 1] = (h / 2 - y) * unit;
     pos[n * 3 + 2] = z;
-    bright[n] = b * (0.25 + 0.75 * fade);
+    bright[n] = b * (0.25 + 0.75 * fade) * (0.35 + 0.65 * tone[i]);
   }
   return { pos, bright };
 }

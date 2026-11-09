@@ -4,21 +4,13 @@ import { Reveal } from "@/components/ui/Reveal";
 import { LazyCodePortrait } from "./LazyCodePortrait";
 import { SpokenLine } from "./SpokenLine";
 
-function parseNow(list: string | undefined) {
-  return (list ?? "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const i = line.indexOf(":");
-      return i > 0 ? { k: line.slice(0, i).trim(), v: line.slice(i + 1).trim() } : { k: "", v: line };
-    });
-}
-
-/** The person: he says his line on the left, and it writes itself on the right. */
+/**
+ * The person: he says his line on the left, and it writes itself on the right.
+ * On phones the portrait comes first; the next swipe stops with the line at
+ * the top of the screen and the bio beneath it (data-page-stop, see touchSteps).
+ */
 export async function Person({ settings }: { settings: Settings }) {
   const bio = await markdownToHtml(settings.bio);
-  const now = parseNow(settings.nowList);
 
   return (
     <section
@@ -35,28 +27,17 @@ export async function Person({ settings }: { settings: Settings }) {
         </Reveal>
 
         <div>
-          <Reveal>
-            <p className="eyebrow">The person</p>
-          </Reveal>
-          <div className="mt-4 sm:mt-6">
-            <SpokenLine />
+          <div data-page-stop>
+            <Reveal>
+              <p className="eyebrow">The person</p>
+            </Reveal>
+            <div className="mt-4 sm:mt-6">
+              <SpokenLine />
+            </div>
           </div>
           <Reveal delay={0.1}>
-            <div className="prose-cine mt-10 max-w-[56ch] text-[1.1rem]" dangerouslySetInnerHTML={{ __html: bio }} />
+            <div className="prose-cine mt-8 max-w-[56ch] text-[1.1rem] sm:mt-10" dangerouslySetInnerHTML={{ __html: bio }} />
           </Reveal>
-
-          {now.length > 0 && (
-            <Reveal delay={0.15}>
-              <dl className="mt-12 divide-y divide-[var(--line)] border-y border-line">
-                {now.map((item, i) => (
-                  <div key={i} className="grid gap-1 py-4 sm:grid-cols-[150px_1fr] sm:gap-6">
-                    <dt className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-muted">{item.k}</dt>
-                    <dd className="text-[15px] text-ink">{item.v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </Reveal>
-          )}
         </div>
       </div>
     </section>

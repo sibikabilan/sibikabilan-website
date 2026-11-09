@@ -10,9 +10,11 @@ import { portraitVideo } from "@/lib/portraitVideo";
 /**
  * As he comes into view, Sibi comes apart first: a glitch into falling green
  * numbers, then a constellation of connected points, and a render pass
- * sweeps him back into the real footage, where he says his line. Each word
- * is published to `portraitStore` so the caption beside him lights up as
- * it's said; then the loop begins again.
+ * sweeps him back into the real footage, where he says his line once. Each
+ * word is published to `portraitStore` so the caption beside him lights up
+ * as it's said. Then he rests on the last frame with the whole line beside
+ * him, and a Replay button plays it again (it never loops on its own, so the
+ * line never fades away while someone is reading it).
  */
 
 /** real → code */
@@ -25,7 +27,8 @@ const REAL_AT = NET_AT + NET_DUR + 1.1;
 const REAL_DUR = 1.5;
 /** The clip, and his voice, start as the render pass is sweeping him back. */
 const SPEAK_AT = REAL_AT + 0.9;
-const CYCLE = SPEAK_AT + SPOKEN_END + 1.6;
+/** How long he holds after the last word before the clip stops on that frame. */
+const HOLD = 0.6;
 const smooth = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 const stages = (t: number) => ({
   toCode: smooth(t / GLITCH),
@@ -38,7 +41,7 @@ const PHASES = [
   { until: NET_AT + NET_DUR, label: "Rewiring" },
   { until: REAL_AT, label: "Connected" },
   { until: SPEAK_AT, label: "Rendering" },
-  { until: CYCLE, label: "Live" },
+  { until: Infinity, label: "Live" },
 ];
 
 const vertex = /* glsl */ `
@@ -258,13 +261,17 @@ export function CodePortrait({ className = "" }: { className?: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [phase, setPhase] = useState(0);
   const [ready, setReady] = useState(false);
+  /** He has said his line and is resting on its last frame. */
+  const [done, setDone] = useState(false);
   // Sound is on by default. Browsers only allow audible playback once the visitor
   // has tapped, clicked or pressed a key on the page, so until then the clip plays
   // silently and the first such interaction brings the voice in from the top.
   const [muted, setMuted] = useState(false);
   const [audible, setAudible] = useState(false);
   const wantSound = useRef(true);
-  const restartRef = useRef<(withSound?: boolean) => void>(() => undefined);
+  /** Says the line again: from the first word if he's mid-line, with a short render-in once he's finished. */
+  const againRef = useRef<(withSound?: boolean) => void>(() => undefined);
+  const stateRef = useRef<{ speaking: boolean; done: boolean }>({ speaking: false, done: false });
 
   useEffect(() => {
     let off = false;
@@ -356,9 +363,13 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     const cam = new THREE.Camera();
     scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
 
+    /** A frame to draw even while resting (after a resize, or the last frame of the line). */
+    let dirty = false;
     const resize = () => {
       const w = box.clientWidth;
       renderer.setSize(w, w, false);
+      // Resizing clears the canvas; a resting portrait draws its frame again.
+      dirty = true;
       mat.uniforms.uGrid.value = w < 480 ? 54 : 80;
       mat.uniforms.uNetGrid.value = w < 480 ? 22 : 30;
     };
@@ -374,12 +385,18 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     let lastWord = -2;
     let cycleStart = 0;
     let speaking = false;
+    /** Where on the timeline his voice starts: later on arrival, at once on a replay. */
+    let speakAt = SPEAK_AT;
+    let done = false;
+    let started = false;
+    const sync = () => (stateRef.current = { speaking, done });
     // Every play gets a ticket, so a slower, older play() can't undo a newer one.
     let ticket = 0;
     /** Play the clip from `from` seconds: the spoken part of the loop. */
     const speak = (withSound: boolean | undefined, from: number) => {
       const mine = ++ticket;
       speaking = true;
+      sync();
       v.currentTime = Math.max(0, from);
       const activated =
         (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive ?? false;
@@ -400,40 +417,78 @@ export function CodePortrait({ className = "" }: { className?: string }) {
         });
     };
     /**
-     * Start the loop `at` seconds in: from the top (the glitch) when he comes
-     * into view, or straight at the spoken line when someone asks for sound.
+     * Run the timeline from `at` seconds, with his voice starting at `sayAt`:
+     * from the top (the glitch) when he comes into view, or from the render
+     * pass with the line straight away when someone asks to hear it again.
      */
-    const restart = (withSound?: boolean, at = 0) => {
+    const start = (at: number, sayAt: number, withSound?: boolean) => {
+      started = true;
+      done = false;
+      setDone(false);
+      speakAt = sayAt;
       cycleStart = performance.now() - at * 1000;
       speaking = false;
+      sync();
       lastWord = -2;
       portraitStore.set({ word: -1, said: -1 });
-      if (at >= SPEAK_AT) speak(withSound, at - SPEAK_AT);
+      if (at >= sayAt) speak(withSound, at - sayAt);
       // The clip keeps running, silent, under the glitch: some phones only hand
-      // WebGL real frames from a playing video. His voice comes back with the line.
+      // WebGL real frames from a playing video. His voice comes in with the line.
       else {
         v.muted = true;
         if (v.paused) v.play().catch(() => undefined);
       }
     };
-    restartRef.current = (withSound?: boolean) => restart(withSound, SPEAK_AT);
+    /** The line is said: hold on its last frame, with every word of it still showing. */
+    const finish = () => {
+      done = true;
+      speaking = false;
+      sync();
+      ++ticket;
+      v.pause();
+      setDone(true);
+      setAudible(false);
+      lastWord = -1;
+      portraitStore.set({ word: -1 });
+      dirty = true;
+    };
+    againRef.current = (withSound?: boolean) => {
+      if (speaking) {
+        // Mid-line: the line over from its first word (inside the tap, so phones allow the sound).
+        cycleStart = performance.now() - speakAt * 1000;
+        lastWord = -2;
+        portraitStore.set({ word: -1, said: -1 });
+        speak(withSound, 0);
+      } else if (done) {
+        // Finished: a short render pass brings him back and he says it again.
+        start(REAL_AT, REAL_AT, withSound);
+      }
+    };
 
     const loop = () => {
       raf = requestAnimationFrame(loop);
       if (!visible || v.readyState < 2) return;
-      let t = (performance.now() - cycleStart) / 1000;
-      if (t >= CYCLE) {
-        restart();
-        t = 0;
+      if (done) {
+        // Resting: draw the held frame once (and again after a resize), then nothing.
+        if (!dirty) return;
+        dirty = false;
+        renderer.render(scene, cam);
+        return;
       }
+      const t = (performance.now() - cycleStart) / 1000;
       // The line starts from the top of the clip, in sync, as he renders back in.
-      if (!speaking && t >= SPEAK_AT) speak(undefined, t - SPEAK_AT);
+      if (!speaking && t >= speakAt) speak(undefined, t - speakAt);
+      if (speaking && t >= speakAt + SPOKEN_END + HOLD) {
+        finish();
+        return;
+      }
+      // A replay skips the first phases, so the label follows the timeline, not the clock.
       const p = PHASES.findIndex((x) => t < x.until);
       if (p !== lastPhase) {
         lastPhase = p;
         setPhase(p);
       }
-      const w = speaking ? wordAt(t - SPEAK_AT) : -1;
+      const w = speaking ? wordAt(t - speakAt) : -1;
       if (w !== lastWord) {
         lastWord = w;
         portraitStore.set({ word: w, said: Math.max(portraitStore.get().said, w) });
@@ -466,13 +521,16 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     };
     loop();
 
-    // Start the line from the top each time he comes into view.
+    // He arrives each time he comes into view, until he has said his line once in full.
+    // After that he stays at rest; Replay is there for another listen.
     const io = new IntersectionObserver(
       ([e]) => {
         const was = visible;
         visible = e.isIntersecting;
-        if (visible && !was) restart(undefined, 0);
-        else if (!visible) {
+        if (visible && !was) {
+          if (done) dirty = true;
+          else start(0, SPEAK_AT);
+        } else if (!visible && !done && started) {
           v.pause();
           portraitStore.set({ word: -1 });
           lastWord = -2;
@@ -483,14 +541,15 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     io.observe(box);
     // If autoplay was held back, the first scroll starts the clip (silently).
     const nudge = () => {
-      if (visible && v.paused) v.play().catch(() => undefined);
+      if (visible && !done && v.paused) v.play().catch(() => undefined);
     };
-    // The first tap, click or key press anywhere lets the voice in: replay the line with sound.
-    // The sound button handles its own taps.
+    // A tap, click or key press while he's saying his line without sound brings the voice
+    // in from the first word. During his arrival a tap changes nothing: the line simply
+    // comes with sound when he gets to it. The portrait's own buttons handle their own taps.
     const unlock = (e: Event) => {
       const t = e.target as Element | null;
       if (t && typeof t.closest === "function" && t.closest("[data-sound-toggle]")) return;
-      if (visible && wantSound.current && v.muted) restart(true, SPEAK_AT);
+      if (visible && speaking && wantSound.current && v.muted) againRef.current(true);
       else nudge();
     };
     window.addEventListener("click", unlock, { passive: true });
@@ -521,12 +580,13 @@ export function CodePortrait({ className = "" }: { className?: string }) {
       /* storage unavailable */
     }
   };
-  // Muting is instant. Unmuting (or tapping while sound is still held back) plays
-  // the line again from the first word, inside the tap, so phones allow the sound.
+  // Muting is instant. Unmuting mid-line plays the line again from the first word,
+  // inside the tap, so phones allow the sound; during his arrival it just lets the
+  // line come with sound; once he's finished it plays the line again.
   const toggleSound = () => {
     const v = video.current;
     if (!v) return;
-    if (!muted && audible) {
+    if (!muted && (audible || done)) {
       wantSound.current = false;
       v.muted = true;
       setMuted(true);
@@ -537,10 +597,12 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     wantSound.current = true;
     setMuted(false);
     remember(true);
-    restartRef.current(true);
+    if (stateRef.current.speaking) againRef.current(true);
   };
-  const hearing = !muted && audible;
-  const waiting = !muted && !audible;
+  const replay = () => againRef.current(wantSound.current);
+  // At rest the button shows the visitor's choice for the replay; while he speaks, whether he's heard.
+  const hearing = done ? !muted : !muted && audible;
+  const waiting = !muted && !audible && !done;
   return (
     <div className={`relative ${className}`}>
       <div ref={wrap} className="code-portrait relative aspect-square w-full">
@@ -572,12 +634,26 @@ export function CodePortrait({ className = "" }: { className?: string }) {
         </button>
       )}
       <div className="mt-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.26em] text-faint">
-        <span className="flex items-center gap-2">
-          <i
-            className={`h-1.5 w-1.5 rounded-full ${phase <= 1 ? "bg-[#34f07a]" : phase <= 4 ? "bg-[var(--beam)]" : "bg-[var(--key)]"} animate-pulse`}
-          />
-          {PHASES[phase].label}
-        </span>
+        {done ? (
+          <button
+            type="button"
+            data-sound-toggle
+            onClick={replay}
+            className="group -my-2 flex items-center gap-2 rounded-full py-2 pr-2 text-ink-2 transition-colors hover:text-ink"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden className="transition-transform duration-500 group-hover:-rotate-180">
+              <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Replay
+          </button>
+        ) : (
+          <span className="flex items-center gap-2">
+            <i
+              className={`h-1.5 w-1.5 rounded-full ${phase <= 1 ? "bg-[#34f07a]" : phase <= 4 ? "bg-[var(--beam)]" : "bg-[var(--key)]"} animate-pulse`}
+            />
+            {PHASES[phase].label}
+          </span>
+        )}
         {SPOKEN_HAS_VOICE ? (
           <span className="flex items-center gap-3">
             {waiting && <span className="hidden normal-case tracking-[0.12em] text-muted sm:inline">Tap for sound</span>}

@@ -44,6 +44,19 @@ export function Nav({ showWriting, showFiction }: NavProps) {
 
   const isActive = (href: string) => !href.includes("#") && pathname.startsWith(href);
 
+  // Home, from the home page itself: straight back to the top (and the opening), wherever
+  // the page is, rather than a same-page link that goes nowhere. A jump, not a long glide
+  // back through every pinned section on the way up.
+  const home = (e: React.MouseEvent) => {
+    setMenu(false);
+    if (pathname !== "/" || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    if (window.location.hash) history.replaceState(history.state, "", "/");
+    const lenis = (window as unknown as { __lenis?: { scrollTo: (y: number, o: object) => void } }).__lenis;
+    if (lenis) lenis.scrollTo(0, { immediate: true, force: true });
+    else window.scrollTo({ top: 0, behavior: "instant" });
+  };
+
   // Frosted pills keep each control legible over whatever scrolls beneath; the bar itself stays clear.
   const glass = cx(
     "border transition-[background-color,border-color,backdrop-filter] duration-500",
@@ -58,6 +71,7 @@ export function Nav({ showWriting, showFiction }: NavProps) {
       <div className="mx-auto flex h-[var(--nav-h)] max-w-[1400px] items-center justify-between px-4 md:px-8">
         <Link
           href="/"
+          onClick={home}
           className="pointer-events-auto group grid h-11 w-11 place-items-center text-ink [filter:drop-shadow(0_1px_10px_rgba(0,0,0,0.55))]"
           aria-label="Sibi Kabilan, home"
         >
@@ -146,7 +160,7 @@ export function Nav({ showWriting, showFiction }: NavProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 + i * 0.06, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <Link href={l.href} onClick={() => setMenu(false)} className="display text-5xl text-ink">
+                  <Link href={l.href} onClick={l.href === "/" ? home : () => setMenu(false)} className="display text-5xl text-ink">
                     {l.label}
                   </Link>
                 </motion.div>

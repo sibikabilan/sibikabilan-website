@@ -30,19 +30,25 @@ function useSceneDirector() {
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-scene]"));
     if (!nodes.length) {
-      sceneStore.set({ target: "network", side: 0, opacity: 0.3, anchor: null, mode: "drift" });
+      sceneStore.set({ target: "network", side: 0, opacity: 0.3, anchor: null, occluder: null, field: 0, mode: "drift" });
       return;
     }
+    // The portrait the dust stands behind, tracked wherever it is on screen (not just while its section is the active one).
+    const occluder = () => {
+      const o = document.querySelector<HTMLElement>("[data-scene-occluder]");
+      if (!o) return null;
+      const r = o.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight || !r.width) return null;
+      return { left: r.left, top: r.top, width: r.width, height: r.height };
+    };
     let active: HTMLElement = nodes[0];
     const measure = () => {
       const a = active.querySelector<HTMLElement>("[data-scene-anchor]");
       if (!a) return null;
+      // In CSS px: the particle field maps them onto its own canvas, which on phones is
+      // taller than the window while the browser's toolbar is showing.
       const r = a.getBoundingClientRect();
-      return {
-        x: ((r.left + r.width / 2) / window.innerWidth) * 2 - 1,
-        y: -(((r.top + r.height / 2) / window.innerHeight) * 2 - 1),
-        size: r.width / window.innerWidth,
-      };
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width };
     };
     const apply = (el: HTMLElement) => {
       active = el;
@@ -52,6 +58,7 @@ function useSceneDirector() {
         side: Number(el.dataset.sceneSide ?? 0),
         opacity: Number(el.dataset.sceneOpacity ?? 1),
         anchor: measure(),
+        occluder: occluder(),
       });
     };
     apply(nodes[0]);
@@ -67,16 +74,20 @@ function useSceneDirector() {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const anchor = measure();
-        if (anchor || sceneStore.get().anchor) sceneStore.set({ anchor });
+        const occ = occluder();
+        if (anchor || occ || sceneStore.get().anchor || sceneStore.get().occluder) sceneStore.set({ anchor, occluder: occ });
       });
     };
     window.addEventListener("scroll", track, { passive: true });
     window.addEventListener("resize", track);
+    // The portrait rises into place as the page opens: measure again once it has landed.
+    window.addEventListener("animationend", track);
     return () => {
       io.disconnect();
       cancelAnimationFrame(raf);
       window.removeEventListener("scroll", track);
       window.removeEventListener("resize", track);
+      window.removeEventListener("animationend", track);
     };
   }, [pathname]);
 }

@@ -96,7 +96,8 @@ export function Timeline() {
               </h2>
             </Reveal>
           </div>
-          <Reveal delay={0.1} className="hidden md:block">
+          {/* Up by the title on every screen, so it's in view whenever the section is. */}
+          <Reveal delay={0.1}>
             <Link href="/journey" className="btn btn-ghost">
               View more →
             </Link>
@@ -132,12 +133,6 @@ export function Timeline() {
             </Reveal>
           ))}
         </ol>
-
-        <Reveal delay={0.3} className="mt-7 md:hidden">
-          <Link href="/journey" className="btn btn-ghost">
-            View more →
-          </Link>
-        </Reveal>
       </div>
     </section>
   );

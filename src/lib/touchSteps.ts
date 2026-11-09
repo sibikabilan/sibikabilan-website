@@ -16,11 +16,18 @@
  * above. And because the whole page is paged there is no hand-over to the
  * browser's own scrolling to get wrong on the way back.
  *
+ * A wheel or trackpad on a touch screen (a tablet's keyboard, or a phone
+ * being tried out in the browser's device mode) pages the same way: one
+ * push, one stop (see wheelPush), so it behaves just as a swipe does.
+ *
  * Desktop wheels and trackpads are handled by useStepScroll with Lenis.
  */
+import type Lenis from "lenis";
 import { gsap } from "gsap";
 import { Observer } from "gsap/Observer";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
+import { wheelGates, type WheelGate } from "@/lib/stores";
+import { createPushDetector, GESTURE_GAP_MS } from "@/lib/wheelPush";
 
 /** A pinned section and where its steps sit on the page (document y, in px). */
 export type StepSection = { el: HTMLElement; stops: () => number[] };
@@ -66,13 +73,24 @@ export function sectionStops(el: HTMLElement, spec: number | readonly number[]):
   return spec.map((p) => Math.round(top - vh + p * h));
 }
 
-/** A section that scrolls normally: one stop if it fits on a screen (centred), otherwise about one per screen. */
+/**
+ * A section that scrolls normally: one stop if it fits on a screen (centred), otherwise about
+ * one per screen. Inside it, `data-page-stop` marks something a stop should begin with (just
+ * under the nav), so a heading is carried onto the next screen instead of being cut through.
+ */
 function pageStops(el: HTMLElement): number[] {
   const top = docTop(el);
   const vh = window.innerHeight;
   const h = el.offsetHeight;
   // A section only a little taller than the screen still gets one stop, at its top.
   if (h <= vh + 2) return [Math.round(top + (h - vh) / 2)];
+  const marks = Array.from(el.querySelectorAll<HTMLElement>("[data-page-stop]"));
+  if (marks.length) {
+    const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--nav-h")) || 72;
+    const end = top + h - vh;
+    const ys = [top, ...marks.map((m) => Math.min(end, Math.max(top, docTop(m) - nav - 12))), end];
+    return ys.map(Math.round);
+  }
   if (h - vh < vh * 0.25) return [Math.round(top)];
   const n = Math.ceil((h - vh) / (vh * 0.85));
   return Array.from({ length: n + 1 }, (_, k) => Math.round(top + ((h - vh) * k) / n));
@@ -155,9 +173,55 @@ export function installTouchSteps(): () => void {
   });
   intent.disable();
 
+  // A wheel or trackpad: every event is held back from the page, and each new push moves one stop.
+  const push = createPushDetector();
+  let paged = false;
+  // The scroll that opens the front door (see Intro) is the door's, momentum and all: nothing
+  // here moves until that input has died away, or until a moment has passed if there was none.
+  let doorClosedAt = -Infinity;
+  let doorMomentum = false;
+  let lastWheelAt = -Infinity;
+  const door = new MutationObserver(() => {
+    if (document.documentElement.dataset.gate !== "open" && doorClosedAt === -Infinity) {
+      doorClosedAt = performance.now();
+      doorMomentum = true;
+    }
+  });
+  door.observe(document.documentElement, { attributes: true, attributeFilter: ["data-gate"] });
+  const onWheel = (event: WheelEvent, deltaY: number): boolean => {
+    // Pinch zoom, sideways scrolling, and the overlays (the menu, the atmosphere panel) keep theirs.
+    if (!paged || event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return true;
+    if ((event.target as Element | null)?.closest?.("[data-touch-native]")) return true;
+    if (event.cancelable) event.preventDefault();
+    if (document.documentElement.dataset.gate === "open") return false;
+    const input = push.read(event, deltaY);
+    const firstSince = lastWheelAt < doorClosedAt;
+    const gap = input.now - lastWheelAt;
+    lastWheelAt = input.now;
+    if (doorMomentum) {
+      // The door's own input never reaches here, so its tail is whatever arrives straight after.
+      if (firstSince ? input.now - doorClosedAt < 400 : gap < GESTURE_GAP_MS) return false;
+      doorMomentum = false;
+    }
+    if (deltaY !== 0 && push.isPush(input)) {
+      push.accept(input);
+      go(deltaY > 0 ? 1 : -1);
+    }
+    return false;
+  };
+  const gate: WheelGate = ({ deltaY, event }) => (event.type === "wheel" ? onWheel(event as WheelEvent, deltaY) : true);
+  // With smooth scrolling on, it asks its gates; without it (calm motion), the page's own wheel events come here.
+  const lenisOf = () => (window as unknown as { __lenis?: Lenis }).__lenis;
+  const onNativeWheel = (e: WheelEvent) => {
+    if (!lenisOf()) onWheel(e, e.deltaY);
+  };
+  wheelGates.add(gate);
+  window.addEventListener("wheel", onNativeWheel, { passive: false });
+
   // On only on a page with stops (the home page); everywhere else the browser scrolls as usual.
   const sync = () => {
-    if (layout().length > 1) intent.enable();
+    paged = layout().length > 1;
+    if (paged) intent.enable();
     else {
       intent.disable();
       tween?.kill();
@@ -173,5 +237,8 @@ export function installTouchSteps(): () => void {
     resync = null;
     tween?.kill();
     intent.kill();
+    door.disconnect();
+    wheelGates.delete(gate);
+    window.removeEventListener("wheel", onNativeWheel);
   };
 }

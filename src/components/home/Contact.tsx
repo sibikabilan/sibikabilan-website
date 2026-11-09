@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
+import { motion, useMotionValue, useScroll, useTransform, type MotionValue } from "motion/react";
 import type { Settings } from "@/lib/cms/types";
 import { useAtmosphere } from "@/lib/stores";
 import { useStepScroll } from "@/lib/useStepScroll";
@@ -23,6 +23,11 @@ const STOP = 0.86;
  */
 const HOLDS = [0.5, 1] as const;
 
+/** Forward, the walk runs at about the footage's own pace, never faster than this. */
+const MAX_RATE = 1.2;
+/** Back up the corridor (seeking, since video can't play in reverse) it may go this much faster. */
+const BACK_RATE = 2.4;
+
 /** Scroll-linked value between two points; a function transform so it follows this section, not the page. */
 function useBetween(p: MotionValue<number>, a: number, b: number, from: number, to: number) {
   return useTransform(p, (v) => from + (to - from) * Math.min(1, Math.max(0, (v - a) / (b - a))));
@@ -30,9 +35,11 @@ function useBetween(p: MotionValue<number>, a: number, b: number, from: number, 
 
 /**
  * The last room. Scrolling walks you down a concrete corridor to an open
- * door: the footage is scrubbed by scroll from the moment the section comes
- * into view, the light from the door blooms as you near it, and the
- * invitation settles in the middle of the screen as the frame pins.
+ * door: the scroll sets how far down the corridor you are headed, and the
+ * footage walks there at its own pace, so however quickly the page moves the
+ * walk never fast-forwards. The light from the door blooms and the rest of the
+ * invitation arrives with the footage, as you near the door; the title
+ * settles in the middle of the screen as the frame pins.
  */
 export function Contact({ settings }: { settings: Settings }) {
   const ref = useRef<HTMLElement>(null);
@@ -42,46 +49,63 @@ export function Contact({ settings }: { settings: Settings }) {
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ["start end", "end end"] });
   useStepScroll(ref, HOLDS);
 
-  const bloom = useBetween(p, 0.45, ARRIVE, 0, 1);
+  /** How far down the corridor the footage is, 0 to 1 (the door). */
+  const walk = useMotionValue(0);
+  const bloom = useBetween(walk, 0.52, 1, 0, 1);
   // The title is in by the first hold; the rest arrives on the way to the door.
   const titleIn = useBetween(p, PIN - 0.08, PIN + 0.05, 0, 1);
   const titleY = useBetween(p, PIN - 0.08, PIN + 0.06, 32, 0);
-  const restIn = useBetween(p, 0.62, 0.82, 0, 1);
-  const restY = useBetween(p, 0.62, 0.84, 20, 0);
+  const restIn = useBetween(walk, 0.7, 0.94, 0, 1);
+  const restY = useBetween(walk, 0.7, 0.96, 20, 0);
 
   useEffect(() => {
     const v = video.current;
     const el = ref.current;
     if (!v || !el || calm) return;
     let raf = 0;
-    let shown = 0;
+    let last = 0;
     let primed = false;
+    /** Whether the walk wants the footage running right now. */
+    let walking = false;
     // Some browsers only decode frames for seeking once the video has played a moment.
     const prime = () => {
       if (primed) return;
       primed = true;
       v.play()
-        .then(() => v.pause())
+        .then(() => !walking && v.pause())
         .catch(() => undefined);
     };
-    const tick = () => {
+    const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
+      const dt = last ? Math.min(0.1, (now - last) / 1000) : 1 / 60;
+      last = now;
       const d = v.duration;
       if (!d || Number.isNaN(d)) return;
-      const walk = Math.min(1, Math.max(0, p.get() / ARRIVE));
-      const target = walk * d * STOP;
-      shown += (target - shown) * 0.18;
-      // One seek at a time: asking for a new frame before the last one has
-      // painted starves the decoder, and the picture freezes mid-swipe.
-      if (!v.seeking && Math.abs(v.currentTime - shown) > 1 / 30) v.currentTime = shown;
+      const end = d * STOP;
+      const target = Math.min(1, Math.max(0, p.get() / ARRIVE)) * end;
+      const t = v.currentTime;
+      walking = target > t + 0.05;
+      if (walking) {
+        // Ahead: let it play, a little quicker while there's far to go, easing in as it arrives.
+        const rate = Math.min(MAX_RATE, Math.max(0.6, (target - t) / 0.6));
+        if (Math.abs(v.playbackRate - rate) > 0.04) v.playbackRate = rate;
+        if (v.paused) v.play().catch(() => undefined);
+      } else if (target < t - 0.05) {
+        // Behind: step back a frame at a time. One seek at a time, or the decoder starves
+        // and the picture freezes mid-swipe.
+        if (!v.paused) v.pause();
+        if (!v.seeking) v.currentTime = Math.max(target, t - Math.max(1 / 30, dt * BACK_RATE));
+      } else if (!v.paused) v.pause();
+      walk.set(Math.min(1, v.currentTime / end));
     };
     const io = new IntersectionObserver(
       ([e]) => {
         cancelAnimationFrame(raf);
+        last = 0;
         if (e.isIntersecting) {
           prime();
-          tick();
-        }
+          raf = requestAnimationFrame(tick);
+        } else if (!v.paused) v.pause();
       },
       { rootMargin: "50% 0px" }
     );
@@ -90,7 +114,7 @@ export function Contact({ settings }: { settings: Settings }) {
       io.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [calm, p]);
+  }, [calm, p, walk]);
 
   return (
     <section

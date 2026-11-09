@@ -96,8 +96,8 @@ export interface SceneState {
   /** -1 left, 0 center, 1 right of the stage */
   side: number;
   opacity: number;
-  /** Optional DOM anchor in normalized device coords, so the light sits exactly behind an element. */
-  anchor: { x: number; y: number; size: number } | null;
+  /** Optional DOM anchor (its centre and width, in CSS px), so the light sits exactly behind an element. */
+  anchor: { x: number; y: number; width: number } | null;
   /** Which crown the halo is wearing (cycles in the hero). */
   variant: number;
   mode: NetworkMode;
@@ -105,6 +105,17 @@ export interface SceneState {
   beat: number;
   /** 0 to 1 as the hero scrolls away: the halo breaks into dust that drifts down into the prologue's smoke. */
   disperse: number;
+  /**
+   * The portrait's square on screen, in CSS px from the top-left. The dust is cut
+   * out of his shape there, so the shadow always stays behind him.
+   */
+  occluder: { left: number; top: number; width: number; height: number } | null;
+  /** 0 to 1: how much of the settled dust stays on as the prologue's room (see Prologue). */
+  field: number;
+  /** Where the reader's eye is in the prologue, in CSS px; the dust is lit there. */
+  lamp: { x: number; y: number };
+  /** The prologue's progress: the room warms from night to lamplight as it's read. */
+  warmth: number;
 }
 
 export const sceneStore = createStore<SceneState>({
@@ -116,6 +127,10 @@ export const sceneStore = createStore<SceneState>({
   mode: "drift",
   beat: 0,
   disperse: 0,
+  occluder: null,
+  field: 0,
+  lamp: { x: 0, y: 0 },
+  warmth: 0,
 });
 
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {

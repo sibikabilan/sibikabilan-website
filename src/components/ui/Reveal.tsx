@@ -7,6 +7,14 @@ import { cx } from "@/lib/utils";
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 /**
+ * How far into the screen something has to come before it reveals. On a touch screen the
+ * home page is paged (see touchSteps) and can come to rest with a section's last line close
+ * to the bottom edge, so there anything on screen counts; it would otherwise never appear.
+ */
+const inset = (fraction: string) =>
+  typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches ? "0px" : `0px 0px -${fraction} 0px`;
+
+/**
  * Fades and lifts its children in as they scroll into view. Use `immediate`
  * for anything in the opening view of a page: the same entrance then runs in
  * CSS from the first paint (see .enter-rise) instead of after hydration.
@@ -45,7 +53,7 @@ export function Reveal({
       className={className}
       initial={{ opacity: 0, y, filter: "blur(8px)" }}
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      viewport={{ once: true, margin: "0px 0px -12% 0px" }}
+      viewport={{ once: true, margin: inset("12%") }}
       transition={{ duration: 1.1, ease: EASE, delay }}
       {...rest}
     >
@@ -92,7 +100,7 @@ export function TitleReveal({
                 className={`inline-block ${italic.has(norm(w)) ? "italic text-ink-2" : ""}`}
                 initial={{ y: "110%" }}
                 whileInView={{ y: "0%" }}
-                viewport={{ once: true, margin: "0px 0px -8% 0px" }}
+                viewport={{ once: true, margin: inset("8%") }}
                 transition={{ duration: 1.1, ease: EASE, delay: delay + i * 0.06 }}
               >
                 {w}

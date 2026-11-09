@@ -22,10 +22,10 @@ const enter = (delay: number, duration: number, from: { y?: string; blur?: strin
 
 /**
  * The opening. The portrait stays put while scrolling rewrites the words
- * beside it (who I am, then build, engineer, write), and the shadow standing
- * behind him changes with each line: first his own outline, larger than life,
- * then a builder, an engineer and a writer, drawn in light by the particle
- * field (see scene/targets).
+ * beside it (who I am, then build, engineer, write), and what stands behind
+ * him changes with each line, drawn in light by the particle field: his own
+ * shadow, a third larger than him; the same shadow with a hammer on its
+ * shoulder, then with headphones; and last an open book (see scene/targets).
  */
 export function Hero({ settings }: { settings: Settings }) {
   const ref = useRef<HTMLElement>(null);
@@ -40,6 +40,10 @@ export function Hero({ settings }: { settings: Settings }) {
   useMotionValueEvent(leaving, "change", (p) => {
     sceneStore.set({ disperse: Math.min(1, Math.max(0, p)) });
   });
+  // Coming back to the page starts from wherever it opens, not from the last visit's dust.
+  useEffect(() => {
+    sceneStore.set({ disperse: Math.min(1, Math.max(0, leaving.get())) });
+  }, [leaving]);
 
   useMotionValueEvent(scrollYProgress, "change", (p) => {
     setStep(Math.min(steps - 1, Math.max(0, Math.round(p * (steps - 1)))));
@@ -70,7 +74,7 @@ export function Hero({ settings }: { settings: Settings }) {
           }}
         />
 
-        <div className="relative mx-auto grid h-full max-w-[1400px] grid-rows-[42svh_1fr] px-5 pt-[var(--nav-h)] md:px-10 lg:grid-cols-[1fr_1fr] lg:grid-rows-1">
+        <div className="relative mx-auto grid h-full max-w-[1400px] grid-rows-[52svh_minmax(0,1fr)] px-5 pt-[var(--nav-h)] md:px-10 lg:grid-cols-[1fr_1fr] lg:grid-rows-1">
           {/* Portrait. Its entrance runs in CSS from the first paint, so the largest
               thing on the page never waits for JavaScript (see .enter-rise). */}
           <div
@@ -78,14 +82,18 @@ export function Hero({ settings }: { settings: Settings }) {
             // Starts part-visible so the portrait counts as painted at once; the blur still does the reveal.
             style={{ ...enter(0.25, 1.8, { y: "30px", blur: "12px" }), "--enter-opacity": "0.35" } as CSSProperties}
           >
-            {/* He stands at the bottom of the frame, small enough for the shadow behind him to tower over him. */}
-            <div className="absolute bottom-0 left-1/2 aspect-square h-[33svh] -translate-x-1/2 lg:h-[min(58svh,42vw)]">
-              {/* The shadow's frame: 3:4, half again his height, standing on the same floor. The
-                  particle field draws the figure into it (data-scene-anchor). */}
-              <div data-scene-anchor aria-hidden className="absolute bottom-0 left-1/2 aspect-[3/4] h-[145%] -translate-x-1/2">
+            {/* He is the picture: as tall as the frame allows, standing at its bottom, with just enough
+                room above for the shadow's head to clear the nav. On phones the words below may run
+                over his chest, where the portrait has already faded into the page.
+                The dust is cut out of his shape here (data-scene-occluder), so it never comes in front of him. */}
+            <div data-scene-occluder className="absolute bottom-0 left-1/2 aspect-square h-[min(46svh,92vw)] -translate-x-1/2 lg:h-[min(76svh,46vw,700px)]">
+              {/* The shadow's frame, standing on the same floor: 1.6 of his widths across and 1.3 high,
+                  the size of the masks in /media/shadows (see scripts/build-shadows.mjs). The
+                  particle field draws the shape into it (data-scene-anchor). */}
+              <div data-scene-anchor aria-hidden className="absolute bottom-0 left-1/2 aspect-[480/390] w-[160%] -translate-x-1/2">
                 {/* The light the shadow stands in. */}
                 <div
-                  className="absolute left-1/2 top-[42%] h-[88%] w-[118%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl"
+                  className="absolute left-1/2 top-[50%] h-[85%] w-[75%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl"
                   style={{
                     background:
                       "radial-gradient(closest-side, color-mix(in oklab, var(--beam) 16%, transparent), color-mix(in oklab, var(--rim) 6%, transparent) 55%, transparent)",
@@ -101,12 +109,16 @@ export function Hero({ settings }: { settings: Settings }) {
                     "radial-gradient(circle, color-mix(in oklab, var(--beam) 18%, transparent) 0%, color-mix(in oklab, var(--rim) 8%, transparent) 45%, transparent 70%)",
                 }}
               />
-              <LivePortrait priority className="absolute inset-0" />
+              {/* Reaches a little above the square, so the rim light over his hair fades out instead of
+                  being cut off flat by the box's top edge. The picture itself still sits in the square. */}
+              <LivePortrait priority className="absolute inset-x-0 bottom-0 top-[-14%]" />
             </div>
           </div>
 
           {/* Words */}
-          <div className="relative z-10 order-2 flex flex-col justify-center pb-14 lg:order-1 lg:pb-[6svh]">
+          {/* On phones the words sit at the bottom of the screen and, if they need the room, rise over
+              the faded foot of the portrait rather than pushing it smaller. */}
+          <div className="relative z-10 order-2 flex min-h-0 flex-col justify-end pb-12 lg:order-1 lg:justify-center lg:pb-[6svh]">
             <AnimatePresence mode="wait">
               {facet ? (
                 <motion.div key={facet.verb} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.35 } }}>
