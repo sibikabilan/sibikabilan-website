@@ -10,6 +10,10 @@ import { ATMOSPHERES } from "@/lib/atmosphere";
  * Light to read by. A slow field of domain warped smoke, lit from where the
  * reader is: a soft lamp follows the word being read, and the whole room
  * warms from night blue to lamplight as the paragraph comes to its end.
+ *
+ * The smoke is born from the hero's dust. As the grains sink and settle low
+ * in the room, it gathers from the bottom up, first as fine specks drifting
+ * with the flow, then filling in as continuous smoke.
  * Fine ordered dithering keeps the gradients smooth, with no banding and no flicker.
  */
 
@@ -24,6 +28,7 @@ const fragment = /* glsl */ `
   uniform float uTime;
   uniform float uProgress;
   uniform float uFade;
+  uniform float uBirth;
   uniform vec2 uLamp;
   uniform vec3 uCool;
   uniform vec3 uWarm;
@@ -87,6 +92,13 @@ const fragment = /* glsl */ `
     // background, grain and spotlight carry straight through and no edge shows.
     float edge = smoothstep(0.0, 0.22, vUv.y) * smoothstep(1.0, 0.78, vUv.y);
     float a = clamp(light * 1.15, 0.0, 1.0) * edge * uFade;
+
+    // Born from the dust: a front rises from the floor as the grains land, and
+    // below it the smoke starts as specks that fill in as it thickens.
+    float front = mix(-0.75, 0.95, uBirth);
+    float rise = smoothstep(front + 0.3, front - 0.2, p.y);
+    float speck = step(0.85 - 0.85 * uBirth, hash(floor((p + 0.08 * r) * uRes.y / 2.2)));
+    a *= rise * mix(speck * 2.2, 1.0, smoothstep(0.45, 1.0, uBirth));
     a += (bayer(frag) - 0.5) / 255.0 * 2.0 * step(0.002, a);
     a = max(a, 0.0);
     gl_FragColor = vec4(tint * a, a);
@@ -130,6 +142,7 @@ export function ReadingLight({
         uTime: { value: 0 },
         uProgress: { value: 0 },
         uFade: { value: 0 },
+        uBirth: { value: 0 },
         uLamp: { value: new THREE.Vector2(0.5, 0.5) },
         uCool: { value: new THREE.Color(c.rim) },
         uWarm: { value: warm },
@@ -174,7 +187,11 @@ export function ReadingLight({
       fade += (1 - fade) * 0.03;
       const pal = palette.current;
       mat.uniforms.uTime.value = (performance.now() - start) / 1000;
-      mat.uniforms.uProgress.value = progress.get();
+      const pr = progress.get();
+      mat.uniforms.uProgress.value = pr;
+      // In step with the hero's dust settling: it sinks while the prologue rises into view.
+      const b = Math.min(1, Math.max(0, (pr - 0.06) / 0.34));
+      mat.uniforms.uBirth.value = b * b * (3 - 2 * b);
       mat.uniforms.uFade.value = fade;
       (mat.uniforms.uLamp.value as THREE.Vector2).copy(at);
       (mat.uniforms.uCool.value as THREE.Color).lerp(new THREE.Color(pal.rim), 0.05);

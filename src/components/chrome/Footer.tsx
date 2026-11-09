@@ -18,7 +18,7 @@ export function Footer({ settings }: { settings: Settings }) {
             Sibi <em className="keyed">Kabilan</em>
           </p>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-            Entrepreneur, engineer and writer, based in {settings.location.split(",")[0] || "Bengaluru"}. Building
+            Entrepreneur, engineer, and writer, based in {settings.location.split(",")[0] || "Bengaluru"}. Building
             SuprAgent, and writing the rest down.
           </p>
         </div>

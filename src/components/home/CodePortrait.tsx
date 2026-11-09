@@ -387,9 +387,12 @@ export function CodePortrait({ className = "" }: { className?: string }) {
       lastWord = -2;
       portraitStore.set({ word: -1, said: -1 });
       if (at >= SPEAK_AT) speak(withSound, at - SPEAK_AT);
-      // The clip keeps running under the glitch (as quiet as it already was):
-      // some phones only hand WebGL real frames from a playing video.
-      else if (v.paused) v.play().catch(() => undefined);
+      // The clip keeps running, silent, under the glitch: some phones only hand
+      // WebGL real frames from a playing video. His voice comes back with the line.
+      else {
+        v.muted = true;
+        if (v.paused) v.play().catch(() => undefined);
+      }
     };
     restartRef.current = (withSound?: boolean) => restart(withSound, SPEAK_AT);
 

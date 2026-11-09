@@ -87,7 +87,7 @@ export function PostEditor({ initial }: { initial: PostDraft }) {
             placeholder="Title"
             className="display w-full bg-transparent text-[clamp(2.2rem,4vw,3.6rem)] text-ink outline-none placeholder:text-faint"
           />
-          <Field label="Excerpt" hint="One or two sentences. Shown in lists, search results and link previews.">
+          <Field label="Excerpt" hint="One or two sentences. Shown in lists, search results, and link previews.">
             <textarea
               value={post.excerpt}
               onChange={(e) => set("excerpt", e.target.value)}

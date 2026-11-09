@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif, Newsreader } from "next/font/google";
 import { SITE } from "@/lib/site";
-import { FEEDS } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, DEFAULT_TWITTER_IMAGE, FEEDS } from "@/lib/seo";
 import { getSettings } from "@/lib/cms/queries";
 import "./globals.css";
 
@@ -52,11 +52,13 @@ export const metadata: Metadata = {
     title: SITE.title,
     description: SITE.description,
     siteName: SITE.name,
+    images: [DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE.title,
     description: SITE.description,
+    images: [DEFAULT_TWITTER_IMAGE],
   },
   robots: {
     index: true,

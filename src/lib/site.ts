@@ -6,10 +6,10 @@
 export const SITE = {
   name: "Sibi Kabilan",
   /** The home page title: kept within about 60 characters so search results show it whole. */
-  title: "Sibi Kabilan · Founder of SuprAgent, engineer and writer",
+  title: "Sibi Kabilan · Founder of SuprAgent, engineer, and writer",
   /** The home page snippet: about 150 characters. */
   description:
-    "Sibi Kabilan is an entrepreneur, engineer and writer in Bengaluru, India. He founded SuprAgent to build Agentic UI, and writes essays and fiction.",
+    "Sibi Kabilan is an entrepreneur, engineer, and writer in Bengaluru, India. He founded SuprAgent to build Agentic UI, and writes essays and fiction.",
   url: "https://www.sibikabilan.com",
   domain: "sibikabilan.com",
   locale: "en_US",
@@ -135,7 +135,7 @@ export const REEL: ReelFrame[] = [
     place: "Servify · India and North America",
     title: "Real money, real people.",
     body:
-      "I looked after device protection for Samsung and Apple customers, built the system that watched for fraud, and put generative AI in front of customers through chat, IVR and voice. When it's someone's phone and someone's money, there is no small mistake.",
+      "I looked after device protection for Samsung and Apple customers, built the system that watched for fraud, and put generative AI in front of customers through chat, IVR, and voice. When it's someone's phone and someone's money, there is no small mistake.",
     line: "Decide what it must never do before what it should do.",
     image: "/media/era-2022.webp",
     alt: "Rows of glowing phones beneath streams of light like transactions",
@@ -166,7 +166,7 @@ export const REEL: ReelFrame[] = [
     place: "Independent",
     title: "Drawing systems for other people to run.",
     body:
-      "Solution architecture across machine learning, content distribution and analytics. I started judging a design by how quiet things were after I handed it over.",
+      "Solution architecture across machine learning, content distribution, and analytics. I started judging a design by how quiet things were after I handed it over.",
     line: "Design for whoever is on call when you're gone.",
     image: "/media/era-2017.webp",
     alt: "System diagrams on a glass wall above a city at dusk",
@@ -178,7 +178,7 @@ export const REEL: ReelFrame[] = [
     place: "Corvallis, Oregon",
     title: "Where I learned to build.",
     body:
-      "My story began at Oregon State. It gave me a campus and, unusually early, real users: traffic operations software for the state of Oregon, and projects for the USDA, the California Board of Education and HP. Operators, analysts, civil servants: people who just needed the thing to work.",
+      "My story began at Oregon State. It gave me a campus and, unusually early, real users: traffic operations software for the state of Oregon, and projects for the USDA, the California Board of Education, and HP. Operators, analysts, civil servants: people who just needed the thing to work.",
     line: "Software people rely on doesn't get a maintenance window.",
     image: "/media/era-osu.webp",
     alt: "A silhouette on the lawn in front of the Memorial Union at Oregon State University",

@@ -24,16 +24,16 @@ function summary(settings: Settings): string {
 
   return `# ${SITE.name}
 
-> ${SITE.name} is an entrepreneur, engineer and writer based in Bengaluru, Karnataka, India. He is the founder of SuprAgent (${settings.companyUrl}), which builds Agentic UI: interfaces an AI agent composes for each person, in the moment. He also writes essays and fiction, published at ${SITE.url}.
+> ${SITE.name} is an entrepreneur, engineer, and writer based in Bengaluru, Karnataka, India. He is the founder of SuprAgent (${settings.companyUrl}), which builds Agentic UI: interfaces an AI agent composes for each person, in the moment. He also writes essays and fiction, published at ${SITE.url}.
 
 Key facts:
 
 - Now: founder of SuprAgent, building Agentic UI.
-- 2022 to 2024: Servify. Device protection programs for Samsung Care+ and AppleCare+, a transactional risk and fraud engine, and generative AI in production through chat, IVR and voice.
+- 2022 to 2024: Servify. Device protection programs for Samsung Care+ and AppleCare+, a transactional risk and fraud engine, and generative AI in production through chat, IVR, and voice.
 - 2018 to 2021: co founded KayaDev AI and ran it as CEO. Computer vision and analytics for enterprise teams.
 - 2017 to 2018: independent AI and solutions architect.
 - Education: computer science at Oregon State University, where he shipped his first production software, for the Oregon Department of Transportation.
-- Writing: essays on Agentic UI, AI agents and building companies, and fiction published a chapter at a time.
+- Writing: essays on Agentic UI, AI agents, and building companies, plus fiction published a chapter at a time.
 - Based in: Bengaluru, Karnataka, India.
 ${links.join("\n")}
 

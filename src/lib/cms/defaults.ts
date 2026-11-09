@@ -17,7 +17,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultAtmosphere: "noir",
   showWriting: true,
   showFiction: true,
-  writingIntro: "Essays on building companies, agents and interfaces, and the lessons that only show up after launch.",
+  writingIntro: "Essays on building companies, agents, and interfaces, and on the lessons that only show up after launch.",
   fictionIntro: "Some of my ideas were never going to be software. They end up here instead, one chapter at a time.",
   bio: `I studied computer science at Oregon State University and shipped my first production software there, for the Oregon Department of Transportation. Since then I've been an independent AI architect, co founded and ran KayaDev AI as CEO, looked after risk and AI for device protection programs at Servify, and now I'm building SuprAgent, the company I founded.
 
@@ -121,6 +121,7 @@ const FIRST_STARTERS = ["customers-dont-say-no-they-go-quiet", "kill-the-static-
  * edited by hand) move to the current default; anything Sibi wrote stays.
  */
 const LEGACY_DEFAULTS: Partial<Record<keyof Settings, string[]>> = {
+  writingIntro: ["Essays on building companies, agents and interfaces, and the lessons that only show up after launch."],
   fictionIntro: ["Elsewhere, I write fiction. This is where the stories live, a chapter at a time."],
   bio: [
     `I studied computer science at Oregon State University and shipped my first production software there, for the Oregon Department of Transportation. Since then I've been an independent AI architect, co founded and ran KayaDev AI as CEO, looked after risk and AI for device protection programs at Servify, and now I'm building SuprAgent with my co founder Nandini Muthuraman.

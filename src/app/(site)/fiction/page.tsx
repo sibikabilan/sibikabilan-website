@@ -10,7 +10,7 @@ import { SITE } from "@/lib/site";
 
 const TITLE = "Fiction: stories told a chapter at a time";
 const DESCRIPTION =
-  "Fiction by Sibi Kabilan: stories published a chapter at a time and free to read. Browse the shelf, take a book down and open it to the first chapter.";
+  "Fiction by Sibi Kabilan: stories published a chapter at a time and free to read. Browse the shelf, take a book down, and open it to the first chapter.";
 
 export const metadata = pageMeta({
   title: `${TITLE} · ${SITE.name}`,

@@ -11,7 +11,7 @@ import { Contact } from "@/components/home/Contact";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { FEEDS, homeGraph } from "@/lib/seo";
 
-// Title, description, Open Graph and Twitter card (with app/opengraph-image.jpg)
+// Title, description, Open Graph and Twitter card (with the share card)
 // come from the root layout; the home page only adds its canonical.
 export const metadata: Metadata = {
   alternates: { canonical: "/", types: FEEDS },

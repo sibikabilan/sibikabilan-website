@@ -35,7 +35,7 @@ Here's an uncomfortable thing to admit after years of building software: a lot o
 
 Every form is a guess. Someone sits down months before a customer arrives and decides which fields come first, which questions everyone must answer, and which document is needed at which step. They decide it for the average customer, because they have to decide it for everyone at once. Then it ships, and the guess is frozen.
 
-I've made those guesses in many places. At Oregon State I also worked on projects touching the USDA, the California Board of Education and HP. From 2017 to 2018 I worked as an independent AI and solutions architect, on twelve projects for five clients, two of them in the Fortune 500. Then I co founded a company, and later I owned flows that customers moved through when something they relied on had broken.
+I've made those guesses in many places. At Oregon State I also worked on projects touching the USDA, the California Board of Education, and HP. From 2017 to 2018 I worked as an independent AI and solutions architect, on twelve projects for five clients, two of them in the Fortune 500. Then I co founded a company, and later I owned flows that customers moved through when something they relied on had broken.
 
 Some of those guesses were good. Many were good for most people and wrong for the person actually in front of the screen.
 
@@ -49,13 +49,13 @@ The models were the part we were proudest of. They were rarely the part that dec
 
 I used to hear those questions as sales objections. I now think they're the specification. An enterprise doesn't buy what a system can do. It buys what the system will reliably do, and just as much, what it will reliably refuse to do.
 
-That lesson matters even more for agents than it did for anything we built at KayaDev. An agent that runs part of a bank's interface is making decisions in front of the bank's customers. If the bank can't see the rules, check the actions and stop the system, it shouldn't buy it. And it won't.
+That lesson matters even more for agents than it did for anything we built at KayaDev. An agent that runs part of a bank's interface is making decisions in front of the bank's customers. If the bank can't see the rules, check the actions, and stop the system, it shouldn't buy it. And it won't.
 
 ## Servify, where every step cost someone
 
-From 2022 to 2024 I was at Servify, working on device protection programs for Samsung Care+ and AppleCare+. I built a transactional risk and fraud engine, and brought generative AI into production through chat, IVR and voicebots.
+From 2022 to 2024 I was at Servify, working on device protection programs for Samsung Care+ and AppleCare+. I built a transactional risk and fraud engine, and brought generative AI into production through chat, IVR, and voicebots.
 
-Device protection is a business of moments nobody plans for. Picture someone whose phone has just cracked. They're annoyed, they may be without the device they use for everything, and now they need to show what happened, prove they're covered and get it fixed. Every unclear question in that flow lands on a person having a bad day. Every unnecessary step is a reason to call support, or to give up on a claim they were entitled to make.
+Device protection is a business of moments nobody plans for. Picture someone whose phone has just cracked. They're annoyed, they may be without the device they use for everything, and now they need to show what happened, prove they're covered, and get it fixed. Every unclear question in that flow lands on a person having a bad day. Every unnecessary step is a reason to call support, or to give up on a claim they were entitled to make.
 
 Servify also taught me the other side. When real money moves, the system has to be strict. A fraud engine exists because some requests should not go through, however politely they're asked. A flow that's equally easy for an honest customer and a dishonest one isn't a good flow.
 
@@ -78,7 +78,7 @@ It works as a loop of four verbs:
 
 That loop is what separates Agentic UI from the things it gets confused with. A chatbot answers in a side window. A copilot suggests while the customer still drives. Generative UI renders a screen once and then stands still. RPA works in the back office and never touches what the customer sees. None of them owns the outcome. An Agentic UI does.
 
-Picture a customer renewing an insurance policy. A static flow shows them the same pages it shows everyone: details they gave last year, a coverage table built for the median buyer, payment at the very end. An Agentic UI starts from the record. It already has the policy, the renewal date and whatever history it's allowed to see. It asks about the one thing that might have changed, explains the one coverage difference that matters to this person, and puts the payment step in front of them while they're still ready to finish.
+Picture a customer renewing an insurance policy. A static flow shows them the same pages it shows everyone: details they gave last year, a coverage table built for the median buyer, payment at the very end. An Agentic UI starts from the record. It already has the policy, the renewal date, and whatever history it's allowed to see. It asks about the one thing that might have changed, explains the one coverage difference that matters to this person, and puts the payment step in front of them while they're still ready to finish.
 
 Same product. Same rules. Same disclosures. A different screen for each person, because each person arrived with a different question.
 
@@ -96,7 +96,7 @@ The third is the one I think about most. Over the last decade, most serious prod
 
 I don't think Agentic UI works by default. It works only if a few things are true, and most of what we build at SuprAgent exists to make them true.
 
-**The institution writes the rules.** The agent decides the next step. It doesn't decide what's allowed. What it may offer, what it must disclose, what it can never say and when it must stop are written by the bank, the lender or the insurer, in a form their own teams can read and change. Not buried in a prompt.
+**The institution writes the rules.** The agent decides the next step. It doesn't decide what's allowed. What it may offer, what it must disclose, what it can never say, and when it must stop are written by the bank, the lender, or the insurer, in a form their own teams can read and change. Not buried in a prompt.
 
 **The guardrails are deterministic.** Every directive the agent sends toward the screen is checked against the schema of the component it wants to use before it can touch the page. Every submission is checked before it's sent. If the agent proposes something the contract doesn't allow, the proposal is refused and the refusal is logged. A model's confidence is not a control. A schema is.
 
@@ -114,9 +114,9 @@ A bet isn't honest unless you say what would make you lose it. This is my list.
 
 **For simple tasks, the static screen is right.** Checking a balance, downloading a statement, changing a password. Nobody needs an agent deciding anything there. If Agentic UI only earns its place on long, complicated, high stakes journeys, it's a narrower idea than I think it is. I'm fairly sure that's where it starts. I'm less sure where it stops.
 
-**Approval may be the slow part.** Compliance teams in regulated businesses approve screens. They can print a form and sign it off. An interface that's different for every person asks them to approve rules, components and logs instead. I think that's a stronger kind of control, because every session can be replayed step by step. But it's a different way of working, and changing how an institution approves things can take longer than building the technology.
+**Approval may be the slow part.** Compliance teams in regulated businesses approve screens. They can print a form and sign it off. An interface that's different for every person asks them to approve rules, components, and logs instead. I think that's a stronger kind of control, because every session can be replayed step by step. But it's a different way of working, and changing how an institution approves things can take longer than building the technology.
 
-**Learning is the easiest verb to overclaim.** Observe, decide and act can be engineered and tested today. Learning that is real, measured and kept inside limits is slower and harder than any pitch makes it sound. I'd rather say that out loud now than discover it in front of a customer.
+**Learning is the easiest verb to overclaim.** Observe, decide, and act can be engineered and tested today. Learning that is real, measured, and kept inside limits is slower and harder than any pitch makes it sound. I'd rather say that out loud now than discover it in front of a customer.
 
 **The transitional forms may last.** A chat window in the corner of a product is easy to buy and easy to ship. The market may spend years there before it moves on. Being right too early is a real way to be wrong.
 
@@ -140,7 +140,7 @@ If you build interfaces for a living, I'd like to know: which screen in your pro
     publishedAt: "2026-11-08T09:00:00.000Z",
     content: `Open a lot of financial apps today and you'll find the same new feature in the bottom right corner. A small bubble. Tap it, and a chat window slides up over the product.
 
-I understand why it's there, because I've built that kind of thing. At Servify I put generative AI in front of customers through chat, IVR and voicebots. Those systems answered real questions for real customers, and I'd do much of that work again.
+I understand why it's there, because I've built that kind of thing. At Servify I put generative AI in front of customers through chat, IVR, and voicebots. Those systems answered real questions for real customers, and I'd do much of that work again.
 
 But the more time I spent with them, the more I noticed what happened after the answer. It's made me fairly sure the chat window in the corner is a transitional form. It's what you get when intelligence is added to a product but isn't allowed to touch it.
 
@@ -158,11 +158,11 @@ Nothing was wrong with the answer. The problem is that the answer was the end of
 
 Look closely and the chat window in the corner has three problems. None of them is about the quality of the model.
 
-**It answers, but it can't act.** It can explain the step. It can't take it. It can't fill a field, change which document is requested or move the journey forward. It lives next to the product, not inside it.
+**It answers, but it can't act.** It can explain the step. It can't take it. It can't fill a field, change which document is requested, or move the journey forward. It lives next to the product, not inside it.
 
 **It moves the work back to the customer.** Every answer comes with homework: read this, then go back and do that. The assistant understood the customer's situation perfectly, then handed the customer the job of turning that understanding into taps.
 
-**It sits outside the brand.** The product has a design system someone spent years getting right: type, spacing, components, tone of voice. Then a generic window opens on top of it with its own fonts, its own bubbles and its own personality. For a bank, that isn't cosmetic. The moment a customer is most uncertain is the moment the interface looks least like the institution they trust.
+**It sits outside the brand.** The product has a design system someone spent years getting right: type, spacing, components, tone of voice. Then a generic window opens on top of it with its own fonts, its own bubbles, and its own personality. For a bank, that isn't cosmetic. The moment a customer is most uncertain is the moment the interface looks least like the institution they trust.
 
 Each of these could be patched on its own. Together they point at the real issue. The chat window was never meant to be the interface. It's where we put a model when we haven't yet decided to let it into the product.
 
@@ -202,7 +202,7 @@ I think voice is better understood as an input. One more way for the customer to
 
 Speaking is how most people explain a complicated situation. Nobody describes their life in the order a form asks for it. They say something like "I moved cities last year, I have two jobs now, and one of them pays me as a contractor." A form needs several screens to collect that. A person said it in one breath.
 
-When voice feeds an agent that drives the screen, the customer can say that sentence and watch the interface respond. Fields fill in. Steps that no longer apply fall away. The next question on the screen is the one their sentence didn't answer. And because all of it is on the screen, the customer can read it, check it and correct it.
+When voice feeds an agent that drives the screen, the customer can say that sentence and watch the interface respond. Fields fill in. Steps that no longer apply fall away. The next question on the screen is the one their sentence didn't answer. And because all of it is on the screen, the customer can read it, check it, and correct it.
 
 Voice makes the input faster. The screen keeps it honest.
 
@@ -218,7 +218,7 @@ An agent that observes before it asks can do the opposite. It can skip the step 
 
 The flow stops being a fixed path and becomes the shortest path for this person through the same rules. Nothing required is skipped. Nothing unnecessary is shown.
 
-I'd push this further. A good product should get shorter the longer you use it. The second renewal, the third claim, the fifth time you update something: the agent knows more each time, so the interface should ask less. Most software does the opposite. It piles up settings, banners and steps, and asks its most loyal customers the same questions it asked on their first day.
+I'd push this further. A good product should get shorter the longer you use it. The second renewal, the third claim, the fifth time you update something: the agent knows more each time, so the interface should ask less. Most software does the opposite. It piles up settings, banners, and steps, and asks its most loyal customers the same questions it asked on their first day.
 
 ## What designers do now
 
@@ -279,7 +279,7 @@ Picture the same customer walking into a branch instead.
 
 A good relationship manager notices the hesitation on the amount before the customer says anything. They suggest a smaller ticket, or a longer tenure, inside the limits they're allowed to offer. They say the document can come later today. They ask when it's a good time to call, and then they actually call at that time.
 
-None of that is magic. It's attention, judgment and follow through.
+None of that is magic. It's attention, judgment, and follow through.
 
 The problem is that this person doesn't scale. One relationship manager, one customer, one conversation at a time.
 
@@ -294,7 +294,7 @@ The interesting engineering isn't the language model. It's everything around it:
 - knowing when to speak, and when to stay quiet
 - knowing what it is never allowed to say
 - handing the conversation to a human at the right moment, with the context intact
-- keeping a single memory across a text, a voice call and an app screen
+- keeping a single memory across a text, a voice call, and an app screen
 
 ## The question I ask now
 
@@ -324,7 +324,7 @@ That era is ending.
 
 A static interface is a map. It's a carefully drawn map, often a beautiful one, but the user still has to find themselves on it, work out where they want to go, and walk there one click at a time.
 
-An agentic interface is a guide. You say where you want to end up, and it navigates the underlying systems, tools and data for you. It shows you only what you need to see, at the moment you need to see it.
+An agentic interface is a guide. You say where you want to end up, and it navigates the underlying systems, tools, and data for you. It shows you only what you need to see, at the moment you need to see it.
 
 The difference isn't cosmetic. It changes who does the work.
 
@@ -346,7 +346,7 @@ It's also where the stakes for getting it wrong are highest. An agent that compo
 
 ## The unit economics nobody mentions
 
-Removing the burden of navigation doesn't just improve the experience. It changes the economics of the product. Every screen you don't have to design, translate, test and maintain for every edge case is a screen that never breaks.
+Removing the burden of navigation doesn't just improve the experience. It changes the economics of the product. Every screen you don't have to design, translate, test, and maintain for every edge case is a screen that never breaks.
 
 The future of software isn't a prettier dashboard or a cleaner dropdown. It's an interface that does the heavy lifting so the people using it don't have to.
 
@@ -388,7 +388,7 @@ Running KayaDev AI as CEO, building computer vision and analytics products for e
 
 ## 4. Real money changes everything
 
-At Servify I owned device protection programs for Samsung Care+, AppleCare+ and Vivo V Shield. I built the engine that monitored transactional risk and flagged fraud, and brought generative AI into production through chatbots, IVRs and voicebots.
+At Servify I owned device protection programs for Samsung Care+, AppleCare+ and Vivo V Shield. I built the engine that monitored transactional risk and flagged fraud, and brought generative AI into production through chatbots, IVRs, and voicebots.
 
 Regulated flows, real money, real customers. When an AI system is wrong in that environment, someone notices, and someone has to answer for it.
 
@@ -396,7 +396,7 @@ Regulated flows, real money, real customers. When an AI system is wrong in that 
 
 ## 5. Answer for what it does
 
-Today I'm building SuprAgent, an AI agent that talks to customers on behalf of banks, lenders, insurers and wealth firms. I write a lot of its code, and I answer for what it does in front of a customer. I think that combination should be more common than it is.
+Today I'm building SuprAgent, an AI agent that talks to customers on behalf of banks, lenders, insurers, and wealth firms. I write a lot of its code, and I answer for what it does in front of a customer. I think that combination should be more common than it is.
 
 ## What production first means in practice
 

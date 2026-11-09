@@ -5,8 +5,13 @@ import type Lenis from "lenis";
 import { wheelGates, type WheelGate } from "@/lib/stores";
 import { stepSections } from "@/lib/touchSteps";
 
-const STEP_SECONDS = 0.95;
+const STEP_SECONDS = 0.6;
+/** Input this far apart starts a new gesture. */
 const GESTURE_GAP_MS = 200;
+/** A wheel event after a pause this long is a fresh push (a mouse wheel notch, a new flick). */
+const PUSH_GAP_MS = 60;
+/** Pushes closer together than this count as one, so a fast flick of a wheel can't skip ahead. */
+const MIN_PUSH_MS = 140;
 const ease = (t: number) => 1 - Math.pow(1 - t, 4);
 
 const average = (xs: number[], n: number) => {
@@ -15,16 +20,17 @@ const average = (xs: number[], n: number) => {
 };
 
 /**
- * One gesture, one step. Inside a pinned section split into `steps` equal
- * stops, a wheel or trackpad gesture glides to the next stop and no further.
- * `media` limits the wheel behaviour; phones always step, one swipe per stop.
+ * One push, one step. Inside a pinned section split into `steps` equal stops,
+ * each wheel notch or trackpad push glides to the next stop. Pushes chain:
+ * scroll three times quickly and it moves three stops, each new push picking
+ * up from where the last one was headed, with no wait in between.
+ * `media` limits the wheel behaviour; phones step one swipe per stop.
  *
- * Trackpads keep sending momentum events for a second or more after the
- * fingers lift, which used to carry the page through two steps. Here a step
- * only fires when input is accelerating (a new push), never on a decaying
- * tail, and never while the previous glide is still running. At the first
- * and last stop a new push is handed back to normal scrolling, so leaving
- * the section feels like any other scroll.
+ * What doesn't count is momentum. Trackpads keep sending a fading tail of
+ * events for a second or more after the fingers lift; a push is only a new
+ * one when it arrives after a pause or rises again after the input had died
+ * down. At the first and last stop a new push is handed back to normal
+ * scrolling, so leaving the section feels like any other scroll.
  */
 export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number, media?: string) {
   useEffect(() => {
@@ -33,8 +39,13 @@ export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number,
 
     let history: number[] = [];
     let lastAt = 0;
-    let lockedUntil = 0;
     let released = false;
+    let goal: number | null = null;
+    let glideUntil = 0;
+    let lastPushAt = 0;
+    // The strongest and weakest input since the last accepted push.
+    let peak = 0;
+    let trough = Infinity;
 
     const gate: WheelGate = ({ deltaY, event }) => {
       if (event.type !== "wheel") return true;
@@ -43,12 +54,16 @@ export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number,
       if (!lenis) return true;
 
       const now = performance.now();
-      if (now - lastAt > GESTURE_GAP_MS) {
+      const gap = now - lastAt;
+      if (gap > GESTURE_GAP_MS) {
         history = [];
         released = false;
+        peak = 0;
+        trough = Infinity;
       }
       lastAt = now;
-      history.push(Math.abs(deltaY));
+      const mag = Math.abs(deltaY);
+      history.push(mag);
       if (history.length > 70) history.shift();
       if (released) return true;
 
@@ -56,36 +71,55 @@ export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number,
       const range = el.offsetHeight - window.innerHeight;
       const size = range / (steps - 1);
       const y = lenis.animatedScroll;
-      if (y < top - 4 || y > top + range + 4) return true;
+      if (y < top - 4 || y > top + range + 4) {
+        goal = null;
+        return true;
+      }
 
       const swallow = () => {
         if (event.cancelable) event.preventDefault();
         return false;
       };
-      if (now < lockedUntil || deltaY === 0) return swallow();
+      if (deltaY === 0) return swallow();
 
+      const gliding = now < glideUntil;
+      if (!gliding) goal = null;
       const f = Math.min(steps - 1, Math.max(0, (y - top) / size));
-      const settled = Math.abs(f - Math.round(f)) < 0.04;
-      // A push, not a tail: recent input is at least as strong as the gesture so far,
-      // and strong enough not to be the last trickle of momentum.
-      const recent = average(history, 6);
-      const accelerating = recent > 3 && recent >= average(history, 40) * 0.98;
 
-      let target: number;
-      if (!settled) {
-        // Arrived mid-way (from below, a scrollbar drag, a resize): settle on the nearest stop.
-        target = Math.round(f);
-      } else {
-        if (!accelerating) return swallow();
-        target = Math.round(f) + (deltaY > 0 ? 1 : -1);
-        if (target < 0 || target > steps - 1) {
-          released = true;
-          return true;
-        }
+      const glideTo = (target: number) => {
+        goal = target;
+        glideUntil = now + STEP_SECONDS * 1000;
+        lenis.scrollTo(top + target * size, { duration: STEP_SECONDS, easing: ease, force: true });
+      };
+
+      // Arrived mid-way (from below, a scrollbar drag, a resize): settle on the nearest stop.
+      if (goal === null && Math.abs(f - Math.round(f)) >= 0.04) {
+        glideTo(Math.round(f));
+        lastPushAt = now;
+        peak = mag;
+        trough = Infinity;
+        return swallow();
       }
 
-      lockedUntil = now + STEP_SECONDS * 1000 + 60;
-      lenis.scrollTo(top + target * size, { duration: STEP_SECONDS, easing: ease, force: true });
+      // The trough only counts the fall after the peak: a push still building up isn't a dip.
+      if (mag > peak) {
+        peak = mag;
+        trough = mag;
+      } else trough = Math.min(trough, mag);
+      const fresh = gap > PUSH_GAP_MS || (trough < peak * 0.45 && average(history, 3) > trough * 2 + 4);
+      if (!fresh || now - lastPushAt < MIN_PUSH_MS) return swallow();
+
+      const target = (goal ?? Math.round(f)) + (deltaY > 0 ? 1 : -1);
+      if (target < 0 || target > steps - 1) {
+        // Past the first or last stop: let the page scroll on, once any glide has landed.
+        if (gliding) return swallow();
+        released = true;
+        return true;
+      }
+      lastPushAt = now;
+      peak = mag;
+      trough = Infinity;
+      glideTo(target);
       return swallow();
     };
 

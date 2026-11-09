@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import ogImage from "@/app/opengraph-image.jpg";
-import twitterImage from "@/app/twitter-image.jpg";
+// One share card for every page, imported so its URL is clean and fixed per version
+// (/_next/static/media/share-card.<hash>.jpg). The app/opengraph-image file convention
+// produced "…jpg?<hash>?dpl=…" on Vercel, which stricter preview fetchers reject.
+import shareCard from "@/assets/share-card.jpg";
 import type { Settings } from "@/lib/cms/types";
 import { SITE } from "@/lib/site";
 
@@ -30,7 +32,7 @@ export const PHOTO = { url: absoluteUrl("/media/sibi-kabilan.jpg"), width: 1200,
 export const AGENTIC_UI = "SuprAgent builds Agentic UI: interfaces an AI agent composes for each person, in the moment.";
 
 /** Matches app/opengraph-image.alt.txt and app/twitter-image.alt.txt. */
-const SHARE_ALT = "Sibi Kabilan, entrepreneur, engineer and writer, building SuprAgent in Bengaluru";
+const SHARE_ALT = "Sibi Kabilan, entrepreneur, engineer, and writer, building SuprAgent in Bengaluru";
 
 /**
  * The site's share card: the same app/opengraph-image.jpg and twitter-image.jpg
@@ -38,8 +40,14 @@ const SHARE_ALT = "Sibi Kabilan, entrepreneur, engineer and writer, building Sup
  * own Open Graph fields replaces the inherited ones wholesale, so nested pages
  * name the card explicitly instead of ending up with no image.
  */
-export const DEFAULT_OG_IMAGE = { url: ogImage.src, width: ogImage.width, height: ogImage.height, alt: SHARE_ALT };
-const DEFAULT_TWITTER_IMAGE = { url: twitterImage.src, width: twitterImage.width, height: twitterImage.height, alt: SHARE_ALT };
+export const DEFAULT_OG_IMAGE = {
+  url: shareCard.src,
+  width: shareCard.width,
+  height: shareCard.height,
+  alt: SHARE_ALT,
+  type: "image/jpeg",
+};
+export const DEFAULT_TWITTER_IMAGE = DEFAULT_OG_IMAGE;
 
 export const FEEDS = {
   "application/rss+xml": [{ url: "/rss.xml", title: `${SITE.name}: essays and fiction` }],
@@ -113,8 +121,7 @@ interface PageMetaInput {
 
 /**
  * Title, description, canonical, feed link, Open Graph and Twitter card for a
- * nested page. The home page doesn't use this: it inherits the root layout's
- * card so its image comes straight from the file convention.
+ * nested page. The home page doesn't use this: it inherits the root layout's card.
  */
 export function pageMeta(p: PageMetaInput): Metadata {
   const socialTitle = p.socialTitle ?? p.title;
@@ -217,7 +224,7 @@ export function personNode(settings: Settings): Node {
         startDate: "2022",
         endDate: "2024",
         description:
-          "Device protection programs for Samsung Care+ and AppleCare+, a transactional risk and fraud engine, and generative AI in chat, IVR and voice.",
+          "Device protection programs for Samsung Care+ and AppleCare+, a transactional risk and fraud engine, and generative AI in chat, IVR, and voice.",
         alumniOf: { "@type": "Organization", name: "Servify" },
       },
     ],

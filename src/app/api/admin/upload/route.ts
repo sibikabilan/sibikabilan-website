@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const file = form?.get("file");
   if (!(file instanceof File)) return Response.json({ error: "No file received." }, { status: 400 });
   if (!ALLOWED.has(file.type)) {
-    return Response.json({ error: "Use a JPEG, PNG, WebP, AVIF or GIF image." }, { status: 415 });
+    return Response.json({ error: "Use a JPEG, PNG, WebP, AVIF, or GIF image." }, { status: 415 });
   }
   if (file.size > MAX_BYTES) {
     return Response.json({ error: "That image is over 4 MB even after compression." }, { status: 413 });

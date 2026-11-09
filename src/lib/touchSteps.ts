@@ -3,8 +3,10 @@
  *
  * The pinned sections (hero, prologue, the long way here) are split into
  * equal stops. On a touch screen a swipe inside one glides to the next stop
- * and no further; at the first and last stop the swipe is handed back to the
- * browser, so leaving feels like any other scroll. A fling that carries into
+ * and no further, and swipes chain: a second swipe while the first is still
+ * gliding carries on to the stop after, with no wait. At the first and last
+ * stop the swipe is handed back to the browser, so leaving feels like any
+ * other scroll. A fling that carries into
  * a section from outside is caught on its first stop instead of sailing
  * through it.
  *
@@ -20,7 +22,7 @@ export const settleAnchors = new Set<HTMLElement>();
 const NAV = 68;
 /** A drag shorter than this is a nudge, not a swipe: it settles back. */
 const SWIPE = 24;
-const GLIDE_MS = 640;
+const GLIDE_MS = 520;
 /** A fling counts as the visitor's for this long after the finger lifts. */
 const FLING_MS = 2200;
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -58,6 +60,8 @@ export function installTouchSteps(): () => void {
 
   let raf = 0;
   let gliding = false;
+  /** Where the current glide is headed, so a swipe mid-glide continues from there. */
+  let goal: { sp: Span; k: number } | null = null;
   let touching = false;
   let startY = 0;
   let mode: "idle" | "native" | "step" = "idle";
@@ -85,13 +89,18 @@ export function installTouchSteps(): () => void {
         return;
       }
       gliding = false;
+      goal = null;
       root.style.overflow = "";
       lastY = window.scrollY;
     };
     raf = requestAnimationFrame(frame);
   };
 
-  const toStep = (sp: Span, k: number) => glide(sp.top + Math.min(sp.last, Math.max(0, k)) * sp.size);
+  const toStep = (sp: Span, k: number) => {
+    const to = Math.min(sp.last, Math.max(0, k));
+    goal = { sp, k: to };
+    glide(sp.top + to * sp.size);
+  };
 
   const settleAnchors_ = () => {
     if (gliding || touching || dir <= 0 || performance.now() - flingAt > FLING_MS + 1500) return;
@@ -118,12 +127,15 @@ export function installTouchSteps(): () => void {
   };
 
   const onMove = (e: TouchEvent) => {
-    if (gliding) {
-      if (e.cancelable) e.preventDefault();
-      return;
-    }
     if (mode === "native" || e.touches.length !== 1) return;
     const dy = startY - e.touches[0].clientY;
+    if (mode === "idle" && gliding && goal) {
+      // Mid-glide: this swipe picks up from where the glide is headed.
+      if (e.cancelable) e.preventDefault();
+      if (Math.abs(dy) < 6) return;
+      mode = "step";
+      held = { sp: goal.sp, f: goal.k };
+    }
     if (mode === "idle") {
       if (Math.abs(dy) < 6) return;
       const sp = spanAt(window.scrollY);

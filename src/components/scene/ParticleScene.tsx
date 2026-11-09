@@ -63,8 +63,9 @@ const particleVertex = /* glsl */ `
     pos.xy += normalize(d + 0.0001) * push * 0.5;
     pos.z += push * 0.7;
 
-    // Leaving the hero: each grain breaks away, sinks like dust, then spreads to
-    // where the prologue's smoke is gathering and fades into it.
+    // Leaving the hero: each grain breaks away and sinks like dust, shrinking to a
+    // fine speck as it falls, and comes to rest low in the room, where the
+    // prologue's smoke is being born from it (see ReadingLight).
     vec4 world = modelMatrix * vec4(pos, 1.0);
     float dd = clamp((uDisperse - aRand * 0.3) / 0.7, 0.0, 1.0);
     float de = dd * dd * (3.0 - 2.0 * dd);
@@ -81,7 +82,7 @@ const particleVertex = /* glsl */ `
         p += (f * 0.35 + vec2(0.0, -0.9)) * de * 0.6;
       }
       vec2 h = vec2(fract(aRand * 91.7), fract(aRand * 53.3 + 0.37));
-      vec2 settle = vec2((h.x - 0.5) * uView.x * 1.1, (h.y - 0.6) * uView.y);
+      vec2 settle = vec2((h.x - 0.5) * uView.x * 1.05, (h.y * 0.5 - 0.5) * uView.y);
       vec2 burst = normalize(world.xy - uCenter.xy + vec2(0.0001)) * 0.7 * sin(min(de, 0.5) * 3.14159);
       world.xy = mix(p, settle, smoothstep(0.55, 1.0, de)) + burst;
       world.z += (fract(aRand * 17.1) - 0.5) * de;
@@ -89,11 +90,11 @@ const particleVertex = /* glsl */ `
 
     vec4 mv = viewMatrix * world;
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = uSize * aSize * uPixelRatio * (1.0 / -mv.z) * (1.0 + push * 0.9) * (1.0 + de * 2.6);
+    gl_PointSize = uSize * aSize * uPixelRatio * (1.0 / -mv.z) * (1.0 + push * 0.9) * mix(1.0, 0.3, de);
 
     vLight = clamp(0.5 + pos.x * 0.24 + pos.y * 0.07 + pos.z * 0.15, 0.0, 1.0);
     vAlpha = (0.45 + 0.55 * fract(aRand * 7.31)) * mix(aFromB, aToB, e) * (1.0 + push * 1.4);
-    vAlpha *= (1.0 - 0.35 * arc) * (1.0 - smoothstep(0.6, 1.0, dd));
+    vAlpha *= (1.0 - 0.2 * arc) * (1.0 - smoothstep(0.7, 1.0, dd));
     vRand = aRand;
   }
 `;
