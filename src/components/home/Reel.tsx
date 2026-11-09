@@ -189,7 +189,7 @@ function Scene({ frame }: { frame: ReelFrame }) {
 /**
  * The long way here, newest first. The section pins and each era crossfades
  * into the next. A wheel or trackpad gesture moves exactly one era; on
- * phones each swipe settles on an era (scroll snap); the rail on the left
+ * phones each swipe moves exactly one era too; the rail on the left
  * jumps straight to one.
  */
 export function Reel() {
@@ -227,9 +227,6 @@ export function Reel() {
       data-scene-opacity="0"
       aria-label="The long way here"
     >
-      {REEL.map((f, i) => (
-        <i key={f.key} aria-hidden className="snap-point pointer-events-none absolute left-0 h-px w-px" style={{ top: `${i * 100}svh` }} />
-      ))}
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         <AnimatePresence initial={false}>
           <motion.div

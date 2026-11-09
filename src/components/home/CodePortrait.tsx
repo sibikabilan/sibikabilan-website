@@ -7,29 +7,36 @@ import { ATMOSPHERES } from "@/lib/atmosphere";
 import { SPOKEN_END, SPOKEN_HAS_VOICE, SPOKEN_LINE } from "@/lib/spoken";
 
 /**
- * Sibi says his line, then comes apart: first into falling green numbers,
- * then into a constellation of connected points, and a render pass sweeps
- * him back into the real footage. The clip restarts every cycle so the line
- * is always spoken over live footage, and each word is published to
- * `portraitStore` so the caption beside him lights up in time.
+ * As he comes into view, Sibi comes apart first: a glitch into falling green
+ * numbers, then a constellation of connected points, and a render pass
+ * sweeps him back into the real footage, where he says his line. Each word
+ * is published to `portraitStore` so the caption beside him lights up as
+ * it's said; then the loop begins again.
  */
 
-/** The line is spoken first; the transformation starts once the last word has landed. */
-const T0 = Math.max(4.2, SPOKEN_END + 0.9);
-const CYCLE = T0 + 9.4;
+/** real → code */
+const GLITCH = 1.2;
+/** code → connected points */
+const NET_AT = GLITCH + 1.2;
+const NET_DUR = 1.3;
+/** connected points → real */
+const REAL_AT = NET_AT + NET_DUR + 1.1;
+const REAL_DUR = 1.5;
+/** The clip, and his voice, start as the render pass is sweeping him back. */
+const SPEAK_AT = REAL_AT + 0.9;
+const CYCLE = SPEAK_AT + SPOKEN_END + 1.6;
 const smooth = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 const stages = (t: number) => ({
-  toCode: smooth((t - T0) / 1.4),
-  toNet: smooth((t - (T0 + 3)) / 1.3),
-  toReal: smooth((t - (T0 + 6)) / 1.6),
+  toCode: smooth(t / GLITCH),
+  toNet: smooth((t - NET_AT) / NET_DUR),
+  toReal: smooth((t - REAL_AT) / REAL_DUR),
 });
 const PHASES = [
-  { until: T0, label: "Live" },
-  { until: T0 + 1.4, label: "Decompiling" },
-  { until: T0 + 3, label: "In code" },
-  { until: T0 + 4.3, label: "Rewiring" },
-  { until: T0 + 6, label: "Connected" },
-  { until: T0 + 7.6, label: "Rendering" },
+  { until: GLITCH, label: "Decompiling" },
+  { until: NET_AT, label: "In code" },
+  { until: NET_AT + NET_DUR, label: "Rewiring" },
+  { until: REAL_AT, label: "Connected" },
+  { until: SPEAK_AT, label: "Rendering" },
   { until: CYCLE, label: "Live" },
 ];
 
@@ -344,12 +351,14 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     let lastPhase = -1;
     let lastWord = -2;
     let cycleStart = 0;
-    // Every restart gets a ticket, so a slower, older play() can't undo a newer one.
+    let speaking = false;
+    // Every play gets a ticket, so a slower, older play() can't undo a newer one.
     let ticket = 0;
-    const restart = (withSound?: boolean) => {
+    /** Play the clip from `from` seconds: the spoken part of the loop. */
+    const speak = (withSound: boolean | undefined, from: number) => {
       const mine = ++ticket;
-      cycleStart = performance.now();
-      v.currentTime = 0;
+      speaking = true;
+      v.currentTime = Math.max(0, from);
       const activated =
         (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive ?? false;
       // Inside a tap we may always ask for sound; otherwise only once the visitor has interacted.
@@ -368,7 +377,21 @@ export function CodePortrait({ className = "" }: { className?: string }) {
           }
         });
     };
-    restartRef.current = restart;
+    /**
+     * Start the loop `at` seconds in: from the top (the glitch) when he comes
+     * into view, or straight at the spoken line when someone asks for sound.
+     */
+    const restart = (withSound?: boolean, at = 0) => {
+      cycleStart = performance.now() - at * 1000;
+      speaking = false;
+      lastWord = -2;
+      portraitStore.set({ word: -1, said: -1 });
+      if (at >= SPEAK_AT) speak(withSound, at - SPEAK_AT);
+      // The clip keeps running under the glitch (as quiet as it already was):
+      // some phones only hand WebGL real frames from a playing video.
+      else if (v.paused) v.play().catch(() => undefined);
+    };
+    restartRef.current = (withSound?: boolean) => restart(withSound, SPEAK_AT);
 
     const loop = () => {
       raf = requestAnimationFrame(loop);
@@ -378,12 +401,14 @@ export function CodePortrait({ className = "" }: { className?: string }) {
         restart();
         t = 0;
       }
+      // The line starts from the top of the clip, in sync, as he renders back in.
+      if (!speaking && t >= SPEAK_AT) speak(undefined, t - SPEAK_AT);
       const p = PHASES.findIndex((x) => t < x.until);
       if (p !== lastPhase) {
         lastPhase = p;
         setPhase(p);
       }
-      const w = wordAt(t);
+      const w = speaking ? wordAt(t - SPEAK_AT) : -1;
       if (w !== lastWord) {
         lastWord = w;
         portraitStore.set({ word: w, said: Math.max(portraitStore.get().said, w) });
@@ -421,7 +446,7 @@ export function CodePortrait({ className = "" }: { className?: string }) {
       ([e]) => {
         const was = visible;
         visible = e.isIntersecting;
-        if (visible && !was) restart();
+        if (visible && !was) restart(undefined, 0);
         else if (!visible) {
           v.pause();
           portraitStore.set({ word: -1 });
@@ -440,7 +465,7 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     const unlock = (e: Event) => {
       const t = e.target as Element | null;
       if (t && typeof t.closest === "function" && t.closest("[data-sound-toggle]")) return;
-      if (visible && wantSound.current && v.muted) restart(true);
+      if (visible && wantSound.current && v.muted) restart(true, SPEAK_AT);
       else nudge();
     };
     window.addEventListener("click", unlock, { passive: true });
@@ -535,7 +560,7 @@ export function CodePortrait({ className = "" }: { className?: string }) {
       <div className="mt-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.26em] text-faint">
         <span className="flex items-center gap-2">
           <i
-            className={`h-1.5 w-1.5 rounded-full ${phase === 1 || phase === 2 ? "bg-[#34f07a]" : phase >= 3 && phase <= 5 ? "bg-[var(--beam)]" : "bg-[var(--key)]"} animate-pulse`}
+            className={`h-1.5 w-1.5 rounded-full ${phase <= 1 ? "bg-[#34f07a]" : phase <= 4 ? "bg-[var(--beam)]" : "bg-[var(--key)]"} animate-pulse`}
           />
           {PHASES[phase].label}
         </span>

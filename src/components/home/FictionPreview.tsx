@@ -268,7 +268,7 @@ function ScrollFiction({ intro, book }: { intro: string; book: DeskBook }) {
       id="fiction"
       data-spotlight="off"
       aria-labelledby="fiction-title"
-      className="relative h-[250svh]"
+      className="relative h-[190svh] md:h-[250svh]"
       data-scene="network"
       data-scene-side="0"
       data-scene-opacity="0.18"

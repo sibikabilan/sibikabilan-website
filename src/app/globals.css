@@ -516,15 +516,7 @@ html.lenis body {
 }
 
 
-/* Touch screens: each swipe through a pinned, stepped section settles on a step. */
-@media (hover: none) and (pointer: coarse) {
-  html {
-    scroll-snap-type: y proximity;
-  }
-  .snap-point {
-    scroll-snap-align: start;
-  }
-}
+
 
 /*
  * Entrances for what's on screen when a page opens. They run in CSS from the

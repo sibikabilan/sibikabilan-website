@@ -3,6 +3,7 @@
 import { useEffect, type RefObject } from "react";
 import type Lenis from "lenis";
 import { wheelGates, type WheelGate } from "@/lib/stores";
+import { stepSections } from "@/lib/touchSteps";
 
 const STEP_SECONDS = 0.95;
 const GESTURE_GAP_MS = 200;
@@ -16,6 +17,7 @@ const average = (xs: number[], n: number) => {
 /**
  * One gesture, one step. Inside a pinned section split into `steps` equal
  * stops, a wheel or trackpad gesture glides to the next stop and no further.
+ * `media` limits the wheel behaviour; phones always step, one swipe per stop.
  *
  * Trackpads keep sending momentum events for a second or more after the
  * fingers lift, which used to carry the page through two steps. Here a step
@@ -88,8 +90,12 @@ export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number,
     };
 
     wheelGates.add(gate);
+    // Touch screens step through the same stops, one swipe each (see touchSteps).
+    const section = { el, steps };
+    stepSections.add(section);
     return () => {
       wheelGates.delete(gate);
+      stepSections.delete(section);
     };
   }, [ref, steps, media]);
 }

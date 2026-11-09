@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 import { initAtmosphere, sceneStore, useAtmosphere, wheelGates } from "@/lib/stores";
 import type { AtmosphereId } from "@/lib/atmosphere";
+import { installTouchSteps } from "@/lib/touchSteps";
 
 const ParticleScene = dynamic(() => import("@/components/scene/ParticleScene"), { ssr: false });
 
@@ -163,6 +164,9 @@ export function SiteChrome({ defaultAtmosphere }: { defaultAtmosphere: Atmospher
   useEffect(() => {
     initAtmosphere(defaultAtmosphere);
   }, [defaultAtmosphere]);
+
+  // Phones: one swipe moves one step through the pinned sections.
+  useEffect(() => installTouchSteps(), []);
 
   // The particle field is atmosphere, not content. It waits for the page to
   // finish loading and the browser to go idle, so three.js never competes with

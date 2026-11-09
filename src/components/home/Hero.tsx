@@ -75,9 +75,6 @@ export function Hero({ settings }: { settings: Settings }) {
       data-scene-side="1"
       data-scene-opacity="1"
     >
-      {Array.from({ length: steps }).map((_, i) => (
-        <i key={i} aria-hidden className="snap-point pointer-events-none absolute left-0 h-px w-px" style={{ top: `${i * 85}svh` }} />
-      ))}
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         <div
           aria-hidden
