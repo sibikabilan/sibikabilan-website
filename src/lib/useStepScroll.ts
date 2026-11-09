@@ -3,7 +3,7 @@
 import { useEffect, type RefObject } from "react";
 import type Lenis from "lenis";
 import { wheelGates, type WheelGate } from "@/lib/stores";
-import { stepSections } from "@/lib/touchSteps";
+import { stepSections, touchStepsChanged } from "@/lib/touchSteps";
 
 const STEP_SECONDS = 0.6;
 /** Input this far apart starts a new gesture. */
@@ -127,9 +127,11 @@ export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number,
     // Touch screens step through the same stops, one swipe each (see touchSteps).
     const section = { el, steps };
     stepSections.add(section);
+    touchStepsChanged();
     return () => {
       wheelGates.delete(gate);
       stepSections.delete(section);
+      touchStepsChanged();
     };
   }, [ref, steps, media]);
 }

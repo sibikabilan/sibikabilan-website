@@ -1,47 +1,31 @@
 /**
- * Phones: one swipe, one step.
+ * Phones: one swipe, one step, built on GSAP's Observer.
  *
- * The pinned sections (hero, prologue, the long way here) are split into
- * equal stops. On a touch screen a swipe inside one glides to the next stop
- * and no further, and swipes chain: a second swipe while the first is still
- * gliding carries on to the stop after, with no wait. At the first and last
- * stop the swipe is handed back to the browser, so leaving feels like any
- * other scroll. A fling that carries into
- * a section from outside is caught on its first stop instead of sailing
- * through it.
+ * The top of the home page (hero, prologue, the long way here) is one paged
+ * zone. Its stops are every step of every pinned section, in order. While
+ * the page is in that zone, Observer takes the touch input from the very
+ * first movement (so the browser never starts a scroll of its own alongside
+ * ours, which is what made a swipe move twice), and each swipe glides to the
+ * next or previous stop with ScrollToPlugin. Swipes chain: a new swipe while
+ * a glide is running carries on from where that glide was headed.
  *
- * Anchors are softer: scroll down onto one and, once the page comes to rest
- * with it near the top, it settles just under the nav.
+ * Swiping on from the last stop glides to the section below and hands the
+ * page back to the browser's own scrolling. Scrolling back up into the zone
+ * (a fling from below) freezes the momentum and settles on the last stop.
+ *
+ * Desktop wheels and trackpads are handled by useStepScroll with Lenis.
  */
+import { gsap } from "gsap";
+import { Observer } from "gsap/Observer";
+import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 
 export type StepSection = { el: HTMLElement; steps: number };
 export const stepSections = new Set<StepSection>();
-export const settleAnchors = new Set<HTMLElement>();
 
-/** Height of the floating nav: anchors settle just below it. */
-const NAV = 68;
-/** A drag shorter than this is a nudge, not a swipe: it settles back. */
-const SWIPE = 24;
-const GLIDE_MS = 520;
-/** A fling counts as the visitor's for this long after the finger lifts. */
-const FLING_MS = 2200;
-const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-
-type Span = { s: StepSection; top: number; end: number; size: number; last: number };
-
-function spanOf(s: StepSection): Span {
-  const top = s.el.getBoundingClientRect().top + window.scrollY;
-  const range = Math.max(0, s.el.offsetHeight - window.innerHeight);
-  const last = Math.max(1, s.steps - 1);
-  return { s, top, end: top + range, size: range / last, last };
-}
-
-function spanAt(y: number): Span | null {
-  for (const s of stepSections) {
-    const sp = spanOf(s);
-    if (sp.size > 0 && y >= sp.top - 2 && y <= sp.end + 2) return sp;
-  }
-  return null;
+let resync: (() => void) | null = null;
+/** Call when sections come and go (page changes), so the zone is switched on or off to match. */
+export function touchStepsChanged() {
+  resync?.();
 }
 
 /** Development only: `localStorage["sk-touch"] = "1"` turns this on with a mouse, for testing. */
@@ -54,162 +38,145 @@ function forced(): boolean {
   }
 }
 
+export function isTouchPaged(): boolean {
+  return typeof window !== "undefined" && (window.matchMedia("(pointer: coarse)").matches || forced());
+}
+
+const docTop = (el: HTMLElement) => el.getBoundingClientRect().top + window.scrollY;
+
+/** Every stop in the zone, top to bottom, plus where the zone hands over to normal scrolling. */
+function layout(): { stops: number[]; exit: number } {
+  const sections = [...stepSections].sort((a, b) => docTop(a.el) - docTop(b.el));
+  const stops: number[] = [];
+  for (const s of sections) {
+    const top = docTop(s.el);
+    const range = Math.max(0, s.el.offsetHeight - window.innerHeight);
+    for (let k = 0; k < s.steps; k++) stops.push(Math.round(top + (range * k) / Math.max(1, s.steps - 1)));
+  }
+  const last = sections[sections.length - 1];
+  const exit = last ? Math.round(docTop(last.el) + last.el.offsetHeight) : 0;
+  return { stops, exit };
+}
+
+/** A glide's length grows a little with distance, so a screen-wide move doesn't feel rushed. */
+const durationFor = (px: number) => 0.5 + 0.22 * Math.min(2, Math.abs(px) / window.innerHeight);
+
 export function installTouchSteps(): () => void {
-  if (!window.matchMedia("(pointer: coarse)").matches && !forced()) return () => undefined;
+  if (!isTouchPaged()) return () => undefined;
+  gsap.registerPlugin(Observer, ScrollToPlugin);
   const root = document.documentElement;
 
-  let raf = 0;
-  let gliding = false;
-  /** Where the current glide is headed, so a swipe mid-glide continues from there. */
-  let goal: { sp: Span; k: number } | null = null;
-  let touching = false;
-  let startY = 0;
-  let mode: "idle" | "native" | "step" = "idle";
-  let held: { sp: Span; f: number } | null = null;
+  let goal: number | null = null;
+  let tween: gsap.core.Tween | null = null;
+  let used = false;
   let lastY = window.scrollY;
-  let dir = 0;
   let flingAt = -Infinity;
-  let flingFrom = 0;
-  let idle = 0;
 
-  const glide = (to: number) => {
-    cancelAnimationFrame(raf);
-    const from = window.scrollY;
-    if (Math.abs(to - from) < 1) return;
-    gliding = true;
-    // Hiding overflow for the glide stops any momentum still running (iOS included);
-    // scrolling from script still works underneath.
+  const nearest = (stops: number[], y: number) => {
+    let best = 0;
+    for (let i = 1; i < stops.length; i++) if (Math.abs(stops[i] - y) < Math.abs(stops[best] - y)) best = i;
+    return best;
+  };
+
+  const glideTo = (y: number, index: number | null, then?: () => void) => {
+    tween?.kill();
+    goal = index;
+    // Overflow stays hidden for the glide: it stops any momentum still running (iOS
+    // included) and nothing else can move the page underneath it.
     root.style.overflow = "hidden";
-    const t0 = performance.now();
-    const frame = () => {
-      const t = Math.min(1, (performance.now() - t0) / GLIDE_MS);
-      window.scrollTo(0, from + (to - from) * ease(t));
-      if (t < 1) {
-        raf = requestAnimationFrame(frame);
-        return;
-      }
-      gliding = false;
-      goal = null;
-      root.style.overflow = "";
-      lastY = window.scrollY;
-    };
-    raf = requestAnimationFrame(frame);
+    tween = gsap.to(window, {
+      scrollTo: { y, autoKill: false },
+      duration: durationFor(y - window.scrollY),
+      ease: "power3.out",
+      onComplete: () => {
+        tween = null;
+        goal = null;
+        root.style.overflow = "";
+        lastY = window.scrollY;
+        then?.();
+      },
+    });
   };
 
-  const toStep = (sp: Span, k: number) => {
-    const to = Math.min(sp.last, Math.max(0, k));
-    goal = { sp, k: to };
-    glide(sp.top + to * sp.size);
-  };
-
-  const settleAnchors_ = () => {
-    if (gliding || touching || dir <= 0 || performance.now() - flingAt > FLING_MS + 1500) return;
-    const h = window.innerHeight;
-    for (const el of settleAnchors) {
-      const top = el.getBoundingClientRect().top;
-      if (Math.abs(top - NAV) > 4 && top > -h * 0.2 && top < h * 0.6) {
-        glide(window.scrollY + top - NAV);
-        return;
-      }
+  const go = (dir: 1 | -1) => {
+    const { stops, exit } = layout();
+    if (!stops.length) return;
+    const from = goal ?? nearest(stops, window.scrollY);
+    const next = from + dir;
+    if (next < 0) {
+      glideTo(stops[0], 0);
+      return;
     }
-  };
-  const scheduleSettle = () => {
-    window.clearTimeout(idle);
-    idle = window.setTimeout(settleAnchors_, 180);
-  };
-
-  const onStart = (e: TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    touching = true;
-    startY = e.touches[0].clientY;
-    mode = "idle";
-    held = null;
-  };
-
-  const onMove = (e: TouchEvent) => {
-    if (mode === "native" || e.touches.length !== 1) return;
-    const dy = startY - e.touches[0].clientY;
-    if (mode === "idle" && gliding && goal) {
-      // Mid-glide: this swipe picks up from where the glide is headed.
-      if (e.cancelable) e.preventDefault();
-      if (Math.abs(dy) < 6) return;
-      mode = "step";
-      held = { sp: goal.sp, f: goal.k };
+    if (next >= stops.length) {
+      // Past the last stop: glide to the section below and give the page back.
+      glideTo(exit, null, () => intent.disable());
+      return;
     }
-    if (mode === "idle") {
-      if (Math.abs(dy) < 6) return;
-      const sp = spanAt(window.scrollY);
-      if (!sp) {
-        mode = "native";
-        return;
-      }
-      const f = (window.scrollY - sp.top) / sp.size;
-      const at = Math.round(f);
-      const settled = Math.abs(f - at) < 0.04;
-      // Swiping on from the last stop, or back from the first, leaves the section.
-      if (settled && ((at >= sp.last && dy > 0) || (at <= 0 && dy < 0))) {
-        mode = "native";
-        return;
-      }
-      mode = "step";
-      held = { sp, f };
-    }
-    if (e.cancelable) e.preventDefault();
+    glideTo(stops[next], next);
   };
 
-  const onEnd = (e: TouchEvent) => {
-    touching = e.touches.length > 0;
-    const dy = startY - (e.changedTouches[0]?.clientY ?? startY);
-    if (mode === "step" && held) {
-      const { sp, f } = held;
-      const at = Math.round(f);
-      const settled = Math.abs(f - at) < 0.04;
-      let k = at;
-      if (Math.abs(dy) >= SWIPE) k = settled ? at + (dy > 0 ? 1 : -1) : dy > 0 ? Math.ceil(f) : Math.floor(f);
-      toStep(sp, k);
-    } else if (mode === "native") {
-      flingAt = performance.now();
-      flingFrom = window.scrollY;
-      dir = dy > 0 ? 1 : dy < 0 ? -1 : dir;
-      scheduleSettle();
-    }
-    mode = "idle";
-    held = null;
-  };
+  const intent = Observer.create({
+    target: window,
+    type: forced() ? "touch,pointer" : "touch",
+    tolerance: 8,
+    preventDefault: true,
+    // Taps on links and buttons still go through.
+    allowClicks: true,
+    onPress: () => {
+      used = false;
+    },
+    // A finger moving up scrolls the page down: the next stop.
+    onUp: () => {
+      if (used) return;
+      used = true;
+      go(1);
+    },
+    onDown: () => {
+      if (used) return;
+      used = true;
+      go(-1);
+    },
+  });
 
+  const inZone = (y: number) => y < layout().exit - 2;
+  // On only while the page is inside the zone (and there is a zone: other pages have none).
+  const sync = () => {
+    if (tween) return;
+    if (inZone(window.scrollY)) intent.enable();
+    else intent.disable();
+  };
+  resync = sync;
+  const first = requestAnimationFrame(sync);
+
+  // Below the zone the browser scrolls natively; coming back up into it, take over again.
+  const onTouchEnd = () => {
+    if (!intent.isEnabled) flingAt = performance.now();
+  };
   const onScroll = () => {
     const y = window.scrollY;
-    if (Math.abs(y - lastY) > 0.5) dir = y > lastY ? 1 : -1;
+    const up = y < lastY;
     lastY = y;
-    if (gliding || touching) return;
-    // Only the visitor's own fling is caught; links and buttons that scroll the page are left alone.
-    if (performance.now() - flingAt > FLING_MS) return;
-    const sp = spanAt(y);
-    if (sp) {
-      const f = (y - sp.top) / sp.size;
-      if (Math.abs(f - Math.round(f)) > 0.04) {
-        flingAt = -Infinity;
-        if (dir > 0) toStep(sp, flingFrom < sp.top - 2 ? 0 : Math.ceil(f));
-        else toStep(sp, flingFrom > sp.end + 2 ? sp.last : Math.floor(f));
-        return;
+    if (tween) return;
+    const zone = inZone(y);
+    if (zone && !intent.isEnabled) {
+      intent.enable();
+      // A fling from below: stop it on the last stop rather than letting it carry on.
+      if (up && performance.now() - flingAt < 2500) {
+        const { stops } = layout();
+        if (stops.length) glideTo(stops[stops.length - 1], stops.length - 1);
       }
-    }
-    scheduleSettle();
+    } else if (!zone && intent.isEnabled) intent.disable();
   };
 
-  window.addEventListener("touchstart", onStart, { passive: true });
-  window.addEventListener("touchmove", onMove, { passive: false });
-  window.addEventListener("touchend", onEnd, { passive: true });
-  window.addEventListener("touchcancel", onEnd, { passive: true });
+  window.addEventListener("touchend", onTouchEnd, { passive: true });
   window.addEventListener("scroll", onScroll, { passive: true });
   return () => {
-    cancelAnimationFrame(raf);
-    window.clearTimeout(idle);
+    cancelAnimationFrame(first);
+    resync = null;
+    tween?.kill();
+    intent.kill();
     root.style.overflow = "";
-    window.removeEventListener("touchstart", onStart);
-    window.removeEventListener("touchmove", onMove);
-    window.removeEventListener("touchend", onEnd);
-    window.removeEventListener("touchcancel", onEnd);
+    window.removeEventListener("touchend", onTouchEnd);
     window.removeEventListener("scroll", onScroll);
   };
 }

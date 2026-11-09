@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { portraitStore, useAtmosphere } from "@/lib/stores";
 import { ATMOSPHERES } from "@/lib/atmosphere";
 import { SPOKEN_END, SPOKEN_HAS_VOICE, SPOKEN_LINE } from "@/lib/spoken";
+import { portraitVideo } from "@/lib/portraitVideo";
 
 /**
  * As he comes into view, Sibi comes apart first: a glitch into falling green
@@ -284,9 +285,30 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     colors.current = ATMOSPHERES[atmosphere];
   }, [atmosphere]);
 
+  // One packed H.264 clip (colour over matte) plays and uploads to WebGL in every browser.
+  // It is the visit's one portrait video (see portraitVideo), so a tap on the opening
+  // screen may already have given it permission to speak.
+  const holder = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // One packed H.264 clip (colour over matte) plays and uploads to WebGL in every browser.
-    setSrc("/media/sibi-talk.mp4");
+    const v = portraitVideo();
+    holder.current?.appendChild(v);
+    video.current = v;
+    setSrc(v.src);
+    return () => {
+      v.pause();
+      v.remove();
+    };
+  }, []);
+
+  // The opening screen's choice (enter with sound, or quietly) arrives as an event.
+  useEffect(() => {
+    const choose = (e: Event) => {
+      const want = (e as CustomEvent<boolean>).detail;
+      wantSound.current = want;
+      setMuted(!want);
+    };
+    window.addEventListener("sk-sound", choose);
+    return () => window.removeEventListener("sk-sound", choose);
   }, []);
 
   useEffect(() => {
@@ -522,18 +544,7 @@ export function CodePortrait({ className = "" }: { className?: string }) {
   return (
     <div className={`relative ${className}`}>
       <div ref={wrap} className="code-portrait relative aspect-square w-full">
-        {src && (
-          <video
-            ref={video}
-            src={src}
-            muted
-            playsInline
-            autoPlay
-            preload="auto"
-            className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-[0.01]"
-            aria-hidden
-          />
-        )}
+        <div ref={holder} className="contents" />
         {/* The still shows until the canvas has real frames of him. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
