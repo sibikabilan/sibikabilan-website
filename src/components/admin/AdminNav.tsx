@@ -6,7 +6,7 @@ import { cx } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/admin", label: "Overview", exact: true },
-  { href: "/admin/posts", label: "Writing" },
+  { href: "/admin/posts", label: "Blog" },
   { href: "/admin/fiction", label: "Fiction" },
   { href: "/admin/settings", label: "Site settings" },
 ];

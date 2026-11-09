@@ -276,8 +276,8 @@
 }
 .coverKind {
   font-family: var(--font-mono);
-  font-size: max(6px, calc(var(--bw) * 0.034));
-  letter-spacing: 0.32em;
+  font-size: max(7.5px, calc(var(--bw) * 0.04));
+  letter-spacing: 0.28em;
   text-transform: uppercase;
   opacity: 0.7;
 }
@@ -299,8 +299,8 @@
 .coverAuthor {
   margin-top: auto;
   font-family: var(--font-mono);
-  font-size: max(6px, calc(var(--bw) * 0.036));
-  letter-spacing: 0.3em;
+  font-size: max(7.5px, calc(var(--bw) * 0.042));
+  letter-spacing: 0.26em;
   text-transform: uppercase;
   opacity: 0.85;
 }

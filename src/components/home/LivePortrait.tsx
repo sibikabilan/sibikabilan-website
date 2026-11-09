@@ -104,8 +104,8 @@ export function LivePortrait({ priority = false, className = "" }: { priority?: 
         // The still is in the server HTML, so the preload scanner finds it; this just puts it first in line.
         loading={priority ? "eager" : undefined}
         fetchPriority={priority ? "high" : undefined}
-        // The square is 46svh tall on phones and min(76svh, 52vw) on desktop (see Hero).
-        sizes="(min-width: 1024px) 76vh, 46vh"
+        // The square is 33svh tall on phones and min(58svh, 42vw) on desktop (see Hero).
+        sizes="(min-width: 1024px) 58vh, 33vh"
         className="object-contain object-bottom"
         onLoad={() => setStillLoaded(true)}
       />

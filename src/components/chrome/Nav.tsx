@@ -35,10 +35,10 @@ export function Nav({ showWriting, showFiction }: NavProps) {
   }, [pathname]);
 
   const links = [
-    { href: "/#story", label: "Story" },
+    { href: "/journey", label: "Journey" },
     { href: "/#now", label: "Work" },
     { href: "/#about", label: "About" },
-    ...(showWriting ? [{ href: "/blog", label: "Writing" }] : []),
+    ...(showWriting ? [{ href: "/blog", label: "Blog" }] : []),
     ...(showFiction ? [{ href: "/fiction", label: "Fiction" }] : []),
   ];
 
@@ -125,6 +125,7 @@ export function Nav({ showWriting, showFiction }: NavProps) {
       <AnimatePresence>
         {menu && (
           <motion.div
+            data-touch-native
             className="pointer-events-auto fixed inset-0 z-[70] flex flex-col bg-[var(--bg)] px-6 pb-10 pt-6"
             initial={{ clipPath: "inset(0 0 100% 0)" }}
             animate={{ clipPath: "inset(0 0 0% 0)" }}

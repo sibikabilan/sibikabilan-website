@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { atmosphereStore, sceneStore } from "@/lib/stores";
 import { ATMOSPHERES } from "@/lib/atmosphere";
-import { buildTargets, HALOS, ROLLING, SPINNING, type TargetKey } from "./targets";
+import { loadTargets, SILHOUETTES, type Target, type TargetKey } from "./targets";
 
 /* ───────────────────────── shaders ───────────────────────── */
 
@@ -14,8 +14,6 @@ const particleVertex = /* glsl */ `
   uniform float uProgress;
   uniform float uSize;
   uniform float uPixelRatio;
-  uniform float uSpin;
-  uniform float uRoll;
   uniform float uMotion;
   uniform vec3 uMouse;
   uniform float uDisperse;
@@ -34,7 +32,6 @@ const particleVertex = /* glsl */ `
   float easeInOutCubic(float t) {
     return t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0;
   }
-  mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
 
   void main() {
     float delay = aRand * 0.42;
@@ -54,9 +51,6 @@ const particleVertex = /* glsl */ `
       cos(uTime * 0.3 + aRand * 20.0),
       sin(uTime * 0.25 + aRand * 10.0)
     ) * 0.02 * uMotion;
-
-    pos.xy = rot(uRoll) * pos.xy;
-    pos.xz = rot(uSpin) * pos.xz;
 
     vec2 d = pos.xy - uMouse.xy;
     float push = smoothstep(1.15, 0.0, length(d)) * uMouse.z;
@@ -125,7 +119,17 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 
 function Stage({ count }: { count: number }) {
   const { viewport, gl, camera } = useThree();
-  const targets = useMemo(() => buildTargets(count), [count]);
+  // The shapes are traced from small mask images, so they arrive a moment after the scene.
+  const [targets, setTargets] = useState<Record<TargetKey, Target> | null>(null);
+  useEffect(() => {
+    let live = true;
+    loadTargets(count)
+      .then((t) => live && setTargets(t))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [count]);
 
   const { geometry, rand } = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -169,8 +173,6 @@ function Stage({ count }: { count: number }) {
           uProgress: { value: 0 },
           uSize: { value: 30 },
           uPixelRatio: { value: 1 },
-          uSpin: { value: 0 },
-          uRoll: { value: 0 },
           uMotion: { value: 1 },
           uMouse: { value: new THREE.Vector3(99, 99, 0) },
           uKey: { value: new THREE.Color(initial.key) },
@@ -188,8 +190,6 @@ function Stage({ count }: { count: number }) {
   const group = useRef<THREE.Group>(null);
   const motion = useRef({
     current: null as TargetKey | null,
-    spinSpeed: 0,
-    rollSpeed: 0,
     progress: 1,
     duration: 2.6,
     mouse: new THREE.Vector2(0, 0),
@@ -255,10 +255,10 @@ function Stage({ count }: { count: number }) {
     const u = material.uniforms;
     const t = state.clock.elapsedTime;
 
-    const wanted: TargetKey = HALOS[((scene.variant % HALOS.length) + HALOS.length) % HALOS.length].key;
+    const n = SILHOUETTES.length;
+    const wanted: TargetKey = SILHOUETTES[((scene.variant % n) + n) % n].key;
     if (targets && wanted !== m.current) {
-      const haloToHalo = m.current?.startsWith("halo-") && wanted.startsWith("halo-");
-      m.duration = calm ? 1.2 : m.current === null ? 3.2 : haloToHalo ? 1.9 : 2.6;
+      m.duration = calm ? 1.2 : m.current === null ? 3.2 : 1.9;
       retarget(wanted);
     }
     if (m.progress < 1) m.progress = Math.min(1, m.progress + dt / m.duration);
@@ -309,16 +309,10 @@ function Stage({ count }: { count: number }) {
     u.uKey.value.copy(m.keyColor);
     u.uRim.value.copy(m.rimColor);
 
-    // Speeds ease, angles accumulate: changing crowns never whips the ring around.
-    const spinTarget = m.current ? SPINNING[m.current] : 0;
-    m.spinSpeed += (spinTarget - m.spinSpeed) * Math.min(1, dt * 0.8);
-    const rollTarget = m.current && !calm ? ROLLING[m.current] : 0;
-    m.rollSpeed += (rollTarget - m.rollSpeed) * Math.min(1, dt * 0.8);
-    u.uSpin.value += dt * 0.11 * m.spinSpeed;
-    u.uRoll.value += dt * 0.12 * m.rollSpeed;
     u.uMotion.value += ((calm ? 0.15 : 1) - u.uMotion.value) * Math.min(1, dt * 2);
     const flowing = dispersing && scene.disperse < 0.999;
-    const haloOpacity = scene.target === "halo" || flowing ? 1 : 0;
+    // Nothing shows until the shapes are ready, so the first thing seen is the figure gathering.
+    const haloOpacity = targets && (scene.target === "halo" || flowing) ? 1 : 0;
     u.uDisperse.value = calm ? 0 : scene.disperse;
     u.uView.value.set(viewport.width, viewport.height);
     if (g) u.uCenter.value.copy(g.position);

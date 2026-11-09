@@ -26,6 +26,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  entries.push({ url: `${SITE.url}/journey`, changeFrequency: "monthly", priority: 0.7 });
+
   if (settings.showWriting) {
     entries.push({ url: `${SITE.url}/blog`, lastModified: postsUpdated, changeFrequency: "weekly", priority: 0.8 });
   }

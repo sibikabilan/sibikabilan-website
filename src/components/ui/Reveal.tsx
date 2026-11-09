@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, type HTMLMotionProps } from "motion/react";
-import type { CSSProperties, ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { cx } from "@/lib/utils";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -74,29 +74,32 @@ export function TitleReveal({
   const italic = new Set(italicWords.map(norm));
   return (
     <span className={className} aria-label={text} role="text">
+      {/* The space between words sits outside each word's inline block: inside, at the end of
+          the block, it collapses to nothing and the words run together. */}
       {words.map((w, i) => (
-        <span key={`${w}-${i}`} className="inline-block overflow-hidden pb-[0.12em] align-bottom" aria-hidden>
-          {immediate ? (
-            <span
-              className={`enter-line inline-block ${italic.has(norm(w)) ? "italic text-ink-2" : ""}`}
-              style={{ "--enter-from": "110%", "--enter-delay": `${delay + i * 0.06}s` } as CSSProperties}
-            >
-              {w}
-              {i < words.length - 1 ? " " : ""}
-            </span>
-          ) : (
-            <motion.span
-              className={`inline-block ${italic.has(norm(w)) ? "italic text-ink-2" : ""}`}
-              initial={{ y: "110%" }}
-              whileInView={{ y: "0%" }}
-              viewport={{ once: true, margin: "0px 0px -8% 0px" }}
-              transition={{ duration: 1.1, ease: EASE, delay: delay + i * 0.06 }}
-            >
-              {w}
-              {i < words.length - 1 ? " " : ""}
-            </motion.span>
-          )}
-        </span>
+        <Fragment key={`${w}-${i}`}>
+          {i > 0 && " "}
+          <span className="inline-block overflow-hidden pb-[0.12em] align-bottom" aria-hidden>
+            {immediate ? (
+              <span
+                className={`enter-line inline-block ${italic.has(norm(w)) ? "italic text-ink-2" : ""}`}
+                style={{ "--enter-from": "110%", "--enter-delay": `${delay + i * 0.06}s` } as CSSProperties}
+              >
+                {w}
+              </span>
+            ) : (
+              <motion.span
+                className={`inline-block ${italic.has(norm(w)) ? "italic text-ink-2" : ""}`}
+                initial={{ y: "110%" }}
+                whileInView={{ y: "0%" }}
+                viewport={{ once: true, margin: "0px 0px -8% 0px" }}
+                transition={{ duration: 1.1, ease: EASE, delay: delay + i * 0.06 }}
+              >
+                {w}
+              </motion.span>
+            )}
+          </span>
+        </Fragment>
       ))}
     </span>
   );

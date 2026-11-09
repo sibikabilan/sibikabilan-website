@@ -76,14 +76,13 @@ export const NOW_WORK = {
   name: "SuprAgent",
   line: "Agentic UI: an interface an agent composes for one person at a time.",
   body:
-    "A static screen is a guess about what the average customer needs, frozen at design time. In an Agentic UI the screen is an output of reasoning. The agent observes what this person is trying to do, decides the next step, acts through the product's own components, and learns from every journey that finished and every one that didn't.",
+    "What excites me is the screen itself becoming the output of reasoning. A form today is a guess about the average customer, frozen at design time. With Agentic UI, an agent sees what this person is trying to do, decides the next step, and builds it from the product's own components, inside rules the team writes.",
   verbs: [
     { verb: "Observe", text: "Reads what it's allowed to read: what was said, tapped, and already known." },
     { verb: "Decide", text: "Picks the next step against a goal and the rules your team wrote." },
     { verb: "Act", text: "Renders it with your own components, fills what it knows, calls your systems." },
     { verb: "Learn", text: "Every finished or abandoned journey makes the next one shorter." },
   ],
-  not: "Not a chatbot in the corner. Not a copilot that suggests while the customer still does the work.",
   with: "Built with the team at Biome.",
   essay: { title: "Why I'm betting my second company on Agentic UI", href: "/blog/betting-my-second-company-on-agentic-ui" },
 };
@@ -105,6 +104,9 @@ export type ReelLockup =
 export interface ReelFrame {
   key: string;
   years: string;
+  /** Who it was with, and one line on it, for the timeline on the home page. */
+  org: string;
+  short: string;
   place: string;
   title: string;
   body: string;
@@ -122,6 +124,8 @@ export const REEL: ReelFrame[] = [
   {
     key: "supragent",
     years: "2025 to now",
+    org: "SuprAgent",
+    short: "Founder. Building Agentic UI.",
     place: "Bengaluru",
     title: "The bet on Agentic UI.",
     body:
@@ -132,6 +136,8 @@ export const REEL: ReelFrame[] = [
   {
     key: "servify",
     years: "2022 to 2024",
+    org: "Servify",
+    short: "Risk, fraud, and AI for device protection.",
     place: "Servify · India and North America",
     title: "Real money, real people.",
     body:
@@ -151,6 +157,8 @@ export const REEL: ReelFrame[] = [
   {
     key: "kayadev",
     years: "2018 to 2021",
+    org: "KayaDev AI",
+    short: "My first company. CEO for three years.",
     place: "Bengaluru",
     title: "The first company.",
     body:
@@ -163,6 +171,8 @@ export const REEL: ReelFrame[] = [
   {
     key: "architect",
     years: "2017 to 2018",
+    org: "Independent",
+    short: "AI and solutions architect. Twelve systems.",
     place: "Independent",
     title: "Drawing systems for other people to run.",
     body:
@@ -175,6 +185,8 @@ export const REEL: ReelFrame[] = [
   {
     key: "osu",
     years: "2013 to 2017",
+    org: "Oregon State University",
+    short: "Computer science, and my first real users.",
     place: "Corvallis, Oregon",
     title: "Where I learned to build.",
     body:

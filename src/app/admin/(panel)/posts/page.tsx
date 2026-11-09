@@ -3,7 +3,7 @@ import { loadIndex } from "@/lib/cms/repo";
 import { formatDate } from "@/lib/utils";
 import { StatusPill } from "@/components/admin/fields";
 
-export const metadata = { title: "Writing" };
+export const metadata = { title: "Blog" };
 
 export default async function PostsAdmin() {
   const { index } = await loadIndex();
@@ -12,7 +12,7 @@ export default async function PostsAdmin() {
     <div className="max-w-5xl">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Writing</p>
+          <p className="eyebrow">Blog</p>
           <h1 className="display mt-3 text-5xl text-ink">Essays</h1>
         </div>
         <Link href="/admin/posts/new" className="btn btn-key">New essay</Link>

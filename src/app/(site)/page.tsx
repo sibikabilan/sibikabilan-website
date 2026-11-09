@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getPublishedPosts, getSettings } from "@/lib/cms/queries";
 import { Hero } from "@/components/home/Hero";
 import { Prologue } from "@/components/home/Prologue";
-import { Reel } from "@/components/home/Reel";
+import { Timeline } from "@/components/home/Timeline";
 import { Now } from "@/components/home/Now";
 import { Person } from "@/components/home/Person";
 import { WritingPreview } from "@/components/home/WritingPreview";
@@ -25,10 +25,10 @@ export default async function HomePage() {
       <JsonLd data={homeGraph(settings)} />
       <Hero settings={settings} />
       <Prologue />
-      <Reel />
+      <Timeline />
       <Now companyUrl={settings.companyUrl} />
       <Person settings={settings} />
-      {settings.showWriting && <WritingPreview posts={posts.slice(0, 3)} intro={settings.writingIntro} />}
+      {settings.showWriting && <WritingPreview posts={posts.slice(0, 4)} intro={settings.writingIntro} />}
       {settings.showFiction && <FictionPreview intro={settings.fictionIntro} />}
       <Contact settings={settings} />
     </>

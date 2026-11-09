@@ -64,12 +64,12 @@ export default async function PostPage({ params }: Props) {
       image: [shareImageNode(post.cover ? { url: post.cover, alt: post.title } : null)],
       author: AUTHOR,
       publisher: AUTHOR,
-      isPartOf: { "@type": "Blog", "@id": IDS.blog, name: `Writing by ${SITE.name}`, url: absoluteUrl("/blog") },
+      isPartOf: { "@type": "Blog", "@id": IDS.blog, name: `The blog of ${SITE.name}`, url: absoluteUrl("/blog") },
       isAccessibleForFree: true,
     },
     breadcrumbNode([
       { name: "Home", path: "/" },
-      { name: "Writing", path: "/blog" },
+      { name: "Blog", path: "/blog" },
       { name: post.title, path: `/blog/${post.slug}` },
     ])
   );
@@ -81,7 +81,7 @@ export default async function PostPage({ params }: Props) {
       <header className="mx-auto max-w-[980px] px-5 pt-[calc(var(--nav-h)+5rem)] text-center md:px-10 md:pt-[calc(var(--nav-h)+7rem)]">
         <Reveal immediate>
           <Link href="/blog" className="eyebrow link-sweep">
-            ← Writing
+            ← Blog
           </Link>
         </Reveal>
         <Reveal immediate delay={0.05}>

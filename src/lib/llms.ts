@@ -37,7 +37,7 @@ Key facts:
 - Based in: Bengaluru, Karnataka, India.
 ${links.join("\n")}
 
-What Agentic UI means: ${NOW_WORK.body} ${NOW_WORK.not}
+What Agentic UI means: ${NOW_WORK.body}
 
 Canonical profile: ${SITE.url}. Each essay has its own URL, listed below.`;
 }
@@ -48,7 +48,8 @@ export async function buildLlmsTxt(): Promise<string> {
 
   sections.push(`## About
 
-- [${SITE.name}, home page](${SITE.url}): Who he is, what he is building, the long way here from Oregon to Bengaluru, and how to get in touch.
+- [${SITE.name}, home page](${SITE.url}): Who he is, what he is building, and how to get in touch.
+- [The long way here](${url("/journey")}): His path from Oregon State University to Bengaluru, newest first.
 - [SuprAgent](${settings.companyUrl}): The company he founded, building Agentic UI.`);
 
   if (settings.showWriting && posts.length) {

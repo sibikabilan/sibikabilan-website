@@ -43,7 +43,8 @@ export function Footer({ settings }: { settings: Settings }) {
           <p className="eyebrow mb-4">Site</p>
           <ul className="space-y-2 text-sm">
             <li><Link href="/" className="link-sweep text-ink-2">Home</Link></li>
-            {settings.showWriting && <li><Link href="/blog" className="link-sweep text-ink-2">Writing</Link></li>}
+            <li><Link href="/journey" className="link-sweep text-ink-2">Journey</Link></li>
+            {settings.showWriting && <li><Link href="/blog" className="link-sweep text-ink-2">Blog</Link></li>}
             {settings.showFiction && <li><Link href="/fiction" className="link-sweep text-ink-2">Fiction</Link></li>}
             <li><Link href="/rss.xml" className="link-sweep text-ink-2">RSS</Link></li>
           </ul>

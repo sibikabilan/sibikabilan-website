@@ -7,12 +7,14 @@ import { Book } from "@/components/fiction/Book";
 import { useCalm } from "@/components/fiction/useCalm";
 import { introWithoutTitle } from "@/components/fiction/volume";
 import { Reveal } from "@/components/ui/Reveal";
+import { useStepScroll } from "@/lib/useStepScroll";
 
 /** The book on the desk is everything at once: the collected works. */
 type DeskBook = { slug: string; title: string; kind: string; cover: string | null };
 const COMPENDIUM: DeskBook = { slug: "collected-works", title: "Collected Works", kind: "compendium", cover: null };
 
-const BOOK_WIDTH = "clamp(150px, 16.5vw, 236px)";
+/** On a phone the open spread (two boards wide) fills the screen, so the page can be read. */
+const BOOK_WIDTH = "max(clamp(150px, 16.5vw, 236px), min(172px, calc(50vw - 22px)))";
 /** Where the board and the loose leaves come to rest: a slightly lifted stack on the left. */
 const COVER_END = -168;
 const LEAF_ENDS = [-165, -162, -158, -153];
@@ -22,6 +24,13 @@ const WARM = "#f6e9d4";
 const PAPER = { "--paper": "#cbbfa6", "--paper-2": "#aa9d84" } as CSSProperties;
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
+
+/**
+ * Where a phone swipe comes to rest (section progress, see sectionStops): the
+ * closed book under its title, then the book open and lit. A desktop scroll
+ * runs through freely.
+ */
+const STOPS = [0.42, 1] as const;
 
 /**
  * Scroll-linked value that holds `from` before `a` and `to` after `b`.
@@ -73,14 +82,14 @@ function TitlePage({ book, light }: { book: DeskBook; light: MotionValue<number>
         className="absolute flex flex-col items-center justify-center text-center"
         style={{ inset: "14% 15% 16% 12%", opacity: light, color: "var(--paper-ink)" }}
       >
-        <span className="font-mono uppercase" style={{ fontSize: "calc(var(--bw) * 0.036)", letterSpacing: "0.32em", opacity: 0.6 }}>
+        <span className="font-mono uppercase" style={{ fontSize: "max(8px, calc(var(--bw) * 0.036))", letterSpacing: "0.3em", opacity: 0.6 }}>
           Fiction
         </span>
         <span className="font-display italic" style={{ marginTop: "14%", fontSize: "calc(var(--bw) * 0.11)", lineHeight: 1 }}>
           {book.title}
         </span>
         <span style={{ marginTop: "10%", width: "16%", height: 1, background: "var(--paper-rule)" }} />
-        <span className="font-mono uppercase" style={{ marginTop: "10%", fontSize: "calc(var(--bw) * 0.034)", letterSpacing: "0.3em", opacity: 0.7 }}>
+        <span className="font-mono uppercase" style={{ marginTop: "10%", fontSize: "max(8px, calc(var(--bw) * 0.034))", letterSpacing: "0.26em", opacity: 0.7 }}>
           Sibi Kabilan
         </span>
       </motion.div>
@@ -97,7 +106,7 @@ function LinePage({ text, light }: { text: string; light: MotionValue<number> | 
         className="absolute flex flex-col items-center justify-center text-center"
         style={{ inset: "14% 13% 16% 15%", opacity: light, color: "var(--paper-ink)" }}
       >
-        <p className="font-display italic text-balance" style={{ fontSize: "calc(var(--bw) * 0.074)", lineHeight: 1.3 }}>
+        <p className="font-display italic text-balance" style={{ fontSize: "max(14px, calc(var(--bw) * 0.074))", lineHeight: 1.3 }}>
           {text}
         </p>
         <span aria-hidden style={{ marginTop: "12%", fontSize: "calc(var(--bw) * 0.06)", opacity: 0.55 }}>
@@ -235,6 +244,7 @@ function DeskBookView({
 function ScrollFiction({ intro, book }: { intro: string; book: DeskBook }) {
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ["start end", "end end"] });
+  useStepScroll(ref, STOPS, "(pointer: coarse)");
 
   const titleIn = useSegment(p, 0.1, 0.32, 0, 1);
   const titleY = useSegment(p, 0.1, 0.36, 36, 0);

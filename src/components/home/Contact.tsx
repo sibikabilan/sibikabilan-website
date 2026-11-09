@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
 import type { Settings } from "@/lib/cms/types";
 import { useAtmosphere } from "@/lib/stores";
+import { useStepScroll } from "@/lib/useStepScroll";
 
 /**
  * Progress runs from the moment the section's top enters the screen to the
@@ -15,6 +16,12 @@ const PIN = 100 / 230;
 const ARRIVE = 0.86;
 /** How much of the clip to use: it stops at the open door, before the light washes the frame out. */
 const STOP = 0.86;
+/**
+ * The two places a scroll comes to rest (section progress, see sectionStops):
+ * partway down the corridor with the invitation up, then at the door. A hard
+ * scroll or fling is caught on the first, so nobody sails past (useStepScroll).
+ */
+const HOLDS = [0.5, 1] as const;
 
 /** Scroll-linked value between two points; a function transform so it follows this section, not the page. */
 function useBetween(p: MotionValue<number>, a: number, b: number, from: number, to: number) {
@@ -33,12 +40,14 @@ export function Contact({ settings }: { settings: Settings }) {
   const { motion: mode } = useAtmosphere();
   const calm = mode === "calm";
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ["start end", "end end"] });
+  useStepScroll(ref, HOLDS);
 
   const bloom = useBetween(p, 0.45, ARRIVE, 0, 1);
-  const titleIn = useBetween(p, PIN - 0.06, PIN + 0.1, 0, 1);
-  const titleY = useBetween(p, PIN - 0.06, PIN + 0.12, 32, 0);
-  const restIn = useBetween(p, PIN + 0.08, PIN + 0.22, 0, 1);
-  const restY = useBetween(p, PIN + 0.08, PIN + 0.24, 20, 0);
+  // The title is in by the first hold; the rest arrives on the way to the door.
+  const titleIn = useBetween(p, PIN - 0.08, PIN + 0.05, 0, 1);
+  const titleY = useBetween(p, PIN - 0.08, PIN + 0.06, 32, 0);
+  const restIn = useBetween(p, 0.62, 0.82, 0, 1);
+  const restY = useBetween(p, 0.62, 0.84, 20, 0);
 
   useEffect(() => {
     const v = video.current;

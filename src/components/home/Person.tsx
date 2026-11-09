@@ -3,7 +3,6 @@ import { markdownToHtml } from "@/lib/markdown";
 import { Reveal } from "@/components/ui/Reveal";
 import { LazyCodePortrait } from "./LazyCodePortrait";
 import { SpokenLine } from "./SpokenLine";
-import { SettleAnchor } from "@/components/ui/SettleAnchor";
 
 function parseNow(list: string | undefined) {
   return (list ?? "")
@@ -24,13 +23,12 @@ export async function Person({ settings }: { settings: Settings }) {
   return (
     <section
       id="about"
+      data-page
       className="relative px-5 pb-24 pt-20 md:px-10 md:py-40"
       data-scene="network"
       data-scene-side="0"
       data-scene-opacity="0.2"
     >
-      {/* On a phone, scrolling down onto him settles the portrait and his line on screen together. */}
-      <SettleAnchor />
       <div className="mx-auto grid max-w-[1400px] items-center gap-7 sm:gap-14 lg:grid-cols-[0.95fr_1.05fr] lg:gap-20">
         <Reveal className="relative mx-auto w-full max-w-[min(620px,44svh)] lg:max-w-[620px]">
           <LazyCodePortrait />

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
 import dynamic from "next/dynamic";
 import { PROLOGUE } from "@/lib/site";
 import { useNearViewport } from "@/lib/useNearViewport";
@@ -12,6 +12,9 @@ const ReadingLight = dynamic(() => import("./ReadingLight").then((m) => m.Readin
 
 /** Words that carry the idea, set in italic. */
 const EMPHASIS = new Set(["someone", "operator", "customer", "team", "person"]);
+
+/** How long the page has to sit still on the prologue before a quiet "scroll" appears. */
+const IDLE_MS = 7000;
 
 /** The lines arrive in pairs: one pair per step. */
 const PER_STEP = 2;
@@ -78,6 +81,33 @@ export function Prologue() {
     return out;
   }, []);
 
+  // Only for someone who has stopped here a good while: a small cue below the words.
+  const [cue, setCue] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let timer = 0;
+    const pinned = () => {
+      const r = el.getBoundingClientRect();
+      return r.top <= 2 && r.bottom >= window.innerHeight - 2;
+    };
+    const arm = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setCue(pinned()), IDLE_MS);
+    };
+    const wake = () => {
+      setCue(false);
+      arm();
+    };
+    const events = ["scroll", "wheel", "touchstart", "keydown"] as const;
+    events.forEach((e) => window.addEventListener(e, wake, { passive: true }));
+    arm();
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, wake));
+    };
+  }, []);
+
   // Where the reader's eye is: the word being lit right now, in viewport fractions.
   const text = useRef<HTMLParagraphElement>(null);
   const lamp = useRef({ x: 0.5, y: 0.45 });
@@ -118,6 +148,29 @@ export function Prologue() {
             ))}
           </p>
         </div>
+
+        <AnimatePresence>
+          {cue && (
+            <motion.div
+              key="cue"
+              aria-hidden
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6, transition: { duration: 0.35 } }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              className="pointer-events-none absolute bottom-[6svh] left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.34em] text-ink-2">Scroll</span>
+              <span className="relative block h-10 w-px overflow-hidden bg-white/15">
+                <motion.i
+                  className="absolute left-0 top-0 block h-4 w-px bg-[var(--key)] shadow-[0_0_8px_var(--key)]"
+                  animate={{ y: [-16, 40] }}
+                  transition={{ duration: 1.7, repeat: Infinity, ease: [0.65, 0, 0.35, 1] }}
+                />
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <div className="sr-only">
         {PROLOGUE.map((m) => (

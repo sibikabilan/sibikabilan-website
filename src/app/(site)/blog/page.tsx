@@ -8,7 +8,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { AUTHOR, IDS, absoluteUrl, breadcrumbNode, graph, pageMeta } from "@/lib/seo";
 import { SITE } from "@/lib/site";
 
-const TITLE = "Writing: essays on Agentic UI and AI agents";
+const TITLE = "Blog: essays on Agentic UI and AI agents";
 const DESCRIPTION =
   "Essays by Sibi Kabilan, founder of SuprAgent, on Agentic UI, putting AI agents into production, and building companies and products people rely on.";
 
@@ -29,7 +29,7 @@ export default async function BlogIndex() {
       "@type": "Blog",
       "@id": IDS.blog,
       url: absoluteUrl("/blog"),
-      name: `Writing by ${SITE.name}`,
+      name: `The blog of ${SITE.name}`,
       description: DESCRIPTION,
       inLanguage: "en",
       author: AUTHOR,
@@ -47,7 +47,7 @@ export default async function BlogIndex() {
     },
     breadcrumbNode([
       { name: "Home", path: "/" },
-      { name: "Writing", path: "/blog" },
+      { name: "Blog", path: "/blog" },
     ])
   );
 
@@ -55,7 +55,7 @@ export default async function BlogIndex() {
     <div data-scene="network" data-scene-side="1" data-scene-opacity="0.5">
       <JsonLd data={jsonLd} />
       <PageHeader
-        eyebrow="Writing"
+        eyebrow="Blog"
         title="Notes from the build."
         italic={["build"]}
         lede={settings.writingIntro}

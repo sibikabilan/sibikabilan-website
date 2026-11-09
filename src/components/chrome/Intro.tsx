@@ -119,6 +119,16 @@ export function Intro() {
     if (mode === "gate" && ready) enterButton.current?.focus({ preventScroll: true });
   }, [mode, ready]);
 
+  // Phone paging leaves the swipe that dismisses this screen alone (see touchSteps).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (mode === "gate") root.dataset.gate = "open";
+    else delete root.dataset.gate;
+    return () => {
+      delete root.dataset.gate;
+    };
+  }, [mode]);
+
   const gate = mode === "gate";
   const t = (delay: number, duration = 0.9) => (still ? { duration: 0 } : { duration, ease: EASE, delay });
 
