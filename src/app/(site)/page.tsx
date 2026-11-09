@@ -1,4 +1,5 @@
-import { getPublishedPosts, getPublishedWorks, getSettings } from "@/lib/cms/queries";
+import type { Metadata } from "next";
+import { getPublishedPosts, getSettings } from "@/lib/cms/queries";
 import { Hero } from "@/components/home/Hero";
 import { Prologue } from "@/components/home/Prologue";
 import { Reel } from "@/components/home/Reel";
@@ -7,35 +8,28 @@ import { Person } from "@/components/home/Person";
 import { WritingPreview } from "@/components/home/WritingPreview";
 import { FictionPreview } from "@/components/home/FictionPreview";
 import { Contact } from "@/components/home/Contact";
-import { SITE } from "@/lib/site";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { FEEDS, homeGraph } from "@/lib/seo";
+
+// Title, description, Open Graph and Twitter card (with app/opengraph-image.jpg)
+// come from the root layout; the home page only adds its canonical.
+export const metadata: Metadata = {
+  alternates: { canonical: "/", types: FEEDS },
+};
 
 export default async function HomePage() {
-  const [settings, posts, works] = await Promise.all([getSettings(), getPublishedPosts(), getPublishedWorks()]);
-
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: SITE.name,
-    url: SITE.url,
-    image: `${SITE.url}/media/sibi-headshot.webp`,
-    jobTitle: "Founder",
-    worksFor: { "@type": "Organization", name: "SuprAgent", url: settings.companyUrl },
-    alumniOf: { "@type": "CollegeOrUniversity", name: "Oregon State University" },
-    address: { "@type": "PostalAddress", addressLocality: "Bengaluru", addressCountry: "IN" },
-    sameAs: [settings.linkedin, settings.github, settings.x].filter(Boolean),
-    knowsAbout: ["Entrepreneurship", "AI agents", "Agentic UI", "Software architecture", "Fiction writing"],
-  };
+  const [settings, posts] = await Promise.all([getSettings(), getPublishedPosts()]);
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <JsonLd data={homeGraph(settings)} />
       <Hero settings={settings} />
       <Prologue />
       <Reel />
       <Now companyUrl={settings.companyUrl} />
       <Person settings={settings} />
       {settings.showWriting && <WritingPreview posts={posts.slice(0, 3)} intro={settings.writingIntro} />}
-      {settings.showFiction && <FictionPreview works={works} intro={settings.fictionIntro} />}
+      {settings.showFiction && <FictionPreview intro={settings.fictionIntro} />}
       <Contact settings={settings} />
     </>
   );

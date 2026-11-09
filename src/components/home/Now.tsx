@@ -1,33 +1,20 @@
+import Link from "next/link";
 import { NOW_WORK } from "@/lib/site";
 import { Reveal, TitleReveal } from "@/components/ui/Reveal";
-import { CinematicVideo } from "@/components/ui/CinematicVideo";
+import { AgenticDemo } from "./AgenticDemo";
 
+/** What I'm building now, told through the idea behind it: Agentic UI. */
 export function Now({ companyUrl }: { companyUrl: string }) {
   return (
     <section
       id="now"
-      className="relative px-5 py-28 md:px-10 md:py-36"
+      className="relative overflow-x-clip px-5 py-28 md:px-10 md:py-36"
       data-scene="network"
       data-scene-side="0"
       data-scene-opacity="0.22"
     >
-      <div className="mx-auto grid max-w-[1400px] items-center gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
-        <Reveal className="grade relative aspect-video overflow-hidden rounded-2xl border border-line bg-black lg:order-2">
-          <CinematicVideo
-            src="/media/ribbon.mp4"
-            poster="/media/ribbon-poster.webp"
-            label="A ribbon of light flows from a chat message, through a voice wave, into a phone"
-          />
-          <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-2 bg-gradient-to-t from-black/85 to-transparent p-5">
-            {NOW_WORK.channels.map((c) => (
-              <span key={c} className="rounded-full border border-white/15 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-white/70">
-                {c}
-              </span>
-            ))}
-          </div>
-        </Reveal>
-
-        <div className="lg:order-1">
+      <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-16 lg:grid-cols-[1.15fr_1fr] lg:gap-20">
+        <div className="min-w-0">
           <Reveal>
             <p className="eyebrow">Now · Company number two</p>
           </Reveal>
@@ -35,27 +22,38 @@ export function Now({ companyUrl }: { companyUrl: string }) {
             <TitleReveal text={`Building ${NOW_WORK.name}.`} italicWords={[NOW_WORK.name]} />
           </h2>
           <Reveal delay={0.1}>
-            <p className="display mt-6 max-w-[24ch] text-[clamp(1.4rem,2.2vw,2rem)] leading-snug text-ink-2">{NOW_WORK.line}</p>
-            <p className="mt-6 max-w-[56ch] text-[15.5px] leading-relaxed text-muted">{NOW_WORK.body}</p>
+            <p className="display mt-6 max-w-[26ch] text-[clamp(1.45rem,2.3vw,2.1rem)] leading-snug text-ink-2">{NOW_WORK.line}</p>
+            <p className="mt-6 max-w-[58ch] text-[16px] leading-relaxed text-muted">{NOW_WORK.body}</p>
           </Reveal>
+
+          <ol className="mt-10 grid gap-x-8 gap-y-6 border-t border-line pt-8 sm:grid-cols-2">
+            {NOW_WORK.verbs.map((v, i) => (
+              <Reveal as="li" key={v.verb} delay={0.05 * i}>
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.24em] text-[color:var(--key)]">
+                  {String(i + 1).padStart(2, "0")} · {v.verb}
+                </span>
+                <span className="mt-2 block text-[14.5px] leading-relaxed text-ink-2">{v.text}</span>
+              </Reveal>
+            ))}
+          </ol>
+
           <Reveal delay={0.15}>
-            <ol className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-2">
-              {NOW_WORK.steps.map((s, i) => (
-                <li key={s} className="flex items-center gap-3">
-                  {s}
-                  {i < NOW_WORK.steps.length - 1 && <span className="text-faint">→</span>}
-                </li>
-              ))}
-            </ol>
-            <p className="mt-8 text-sm text-muted">{NOW_WORK.with}</p>
+            <p className="mt-10 max-w-[58ch] text-[15px] italic text-muted">{NOW_WORK.not}</p>
+            <p className="mt-4 text-sm text-faint">{NOW_WORK.with}</p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link href={NOW_WORK.essay.href} className="btn btn-key max-w-full whitespace-normal text-left leading-snug">
+                Read: {NOW_WORK.essay.title} →
+              </Link>
               <a href={companyUrl} target="_blank" rel="noreferrer" className="btn btn-ghost">
-                Visit supragent.ai ↗
+                supragent.ai ↗
               </a>
-              <span className="text-sm text-faint">There&apos;s a live agent there. It picks up.</span>
             </div>
           </Reveal>
         </div>
+
+        <Reveal delay={0.1}>
+          <AgenticDemo />
+        </Reveal>
       </div>
     </section>
   );

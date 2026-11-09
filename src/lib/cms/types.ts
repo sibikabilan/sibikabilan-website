@@ -91,4 +91,6 @@ export interface CmsIndex {
   posts: PostMeta[];
   works: Work[];
   settings: Settings;
+  /** Starter essays this index has already been offered, so deleting one keeps it deleted. */
+  seenStarters?: string[];
 }

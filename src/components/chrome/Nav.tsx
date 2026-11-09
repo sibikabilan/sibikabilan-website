@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { AtmospherePanel } from "./AtmospherePanel";
+import { Mark } from "./Mark";
 import { cx } from "@/lib/utils";
 
 interface NavProps {
@@ -43,21 +44,27 @@ export function Nav({ showWriting, showFiction }: NavProps) {
 
   const isActive = (href: string) => !href.includes("#") && pathname.startsWith(href);
 
+  // Frosted pills keep each control legible over whatever scrolls beneath; the bar itself stays clear.
+  const glass = cx(
+    "border transition-[background-color,border-color,backdrop-filter] duration-500",
+    scrolled
+      ? "border-white/[0.08] bg-[color-mix(in_oklab,var(--bg)_42%,transparent)] backdrop-blur-xl"
+      : "border-transparent bg-transparent"
+  );
+  const iconBtn = "grid h-10 w-10 place-items-center rounded-full border border-white/[0.08] bg-[color-mix(in_oklab,var(--bg)_42%,transparent)] backdrop-blur-xl transition-colors duration-500";
+
   return (
-    <header
-      className={cx(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-700",
-        scrolled ? "bg-[color-mix(in_oklab,var(--bg)_72%,transparent)] backdrop-blur-xl" : "bg-transparent"
-      )}
-    >
-      <div className="mx-auto flex h-[var(--nav-h)] max-w-[1400px] items-center justify-between px-5 md:px-10">
-        <Link href="/" className="group flex items-center gap-3" aria-label="Sibi Kabilan, home">
-          <span className="relative grid h-9 w-9 place-items-center rounded-full border border-line font-display text-lg italic text-ink transition-colors duration-500 group-hover:border-[color:var(--key)]">
-            S
-          </span>
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-50">
+      <div className="mx-auto flex h-[var(--nav-h)] max-w-[1400px] items-center justify-between px-4 md:px-8">
+        <Link
+          href="/"
+          className="pointer-events-auto group grid h-11 w-11 place-items-center text-ink [filter:drop-shadow(0_1px_10px_rgba(0,0,0,0.55))]"
+          aria-label="Sibi Kabilan, home"
+        >
+          <Mark size={26} className="transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:rotate-[-6deg]" />
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
+        <nav className={cx("pointer-events-auto hidden h-10 items-center gap-7 rounded-full px-6 md:flex", glass)} aria-label="Primary">
           {links.map((l) => (
             <Link
               key={l.href}
@@ -72,32 +79,41 @@ export function Nav({ showWriting, showFiction }: NavProps) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="pointer-events-auto flex items-center gap-2">
           <div className="relative">
             <button
               type="button"
               data-atmosphere-trigger
               onClick={() => setAtmo((v) => !v)}
               aria-expanded={atmo}
-              className="flex h-9 items-center gap-2 rounded-full border border-line px-3 text-[12px] text-ink-2 transition-colors hover:border-[color:var(--key)] hover:text-ink"
+              aria-label="Atmosphere"
+              title="Atmosphere"
+              className={cx(iconBtn, "hover:border-[color:var(--key)]")}
             >
-              <span className="relative h-3.5 w-3.5 rounded-full" style={{ background: "conic-gradient(var(--key), var(--rim), var(--key))" }} />
-              <span className="hidden sm:inline">Atmosphere</span>
+              <span
+                className="h-4 w-4 rounded-full shadow-[0_0_12px_color-mix(in_oklab,var(--key)_35%,transparent)]"
+                style={{ background: "conic-gradient(from 210deg, var(--key), var(--rim), var(--beam), var(--key))" }}
+              />
             </button>
             <AtmospherePanel open={atmo} onClose={() => setAtmo(false)} />
           </div>
           <Link
             href="/#contact"
-            className="hidden h-9 items-center rounded-full bg-[var(--key)] px-4 text-[12px] font-medium text-[#0b0b0d] transition-shadow duration-500 hover:shadow-[0_0_30px_color-mix(in_oklab,var(--key)_30%,transparent)] lg:flex"
+            aria-label="Say hello"
+            title="Say hello"
+            className="hidden h-10 w-10 place-items-center rounded-full bg-[var(--key)] text-[#0b0b0d] transition-shadow duration-500 hover:shadow-[0_0_30px_color-mix(in_oklab,var(--key)_35%,transparent)] md:grid"
           >
-            Say hello
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path
+                d="M4 5.5h16a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-9l-4.5 3.5V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+              <path d="M8 11.25h.01M12 11.25h.01M16 11.25h.01" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            </svg>
           </Link>
-          <button
-            type="button"
-            className="grid h-9 w-9 place-items-center rounded-full border border-line md:hidden"
-            onClick={() => setMenu(true)}
-            aria-label="Open menu"
-          >
+          <button type="button" className={cx(iconBtn, "md:hidden")} onClick={() => setMenu(true)} aria-label="Open menu">
             <span className="flex flex-col gap-1">
               <i className="block h-px w-4 bg-ink" />
               <i className="block h-px w-4 bg-ink" />
@@ -109,7 +125,7 @@ export function Nav({ showWriting, showFiction }: NavProps) {
       <AnimatePresence>
         {menu && (
           <motion.div
-            className="fixed inset-0 z-[70] flex flex-col bg-[var(--bg)] px-6 pb-10 pt-6"
+            className="pointer-events-auto fixed inset-0 z-[70] flex flex-col bg-[var(--bg)] px-6 pb-10 pt-6"
             initial={{ clipPath: "inset(0 0 100% 0)" }}
             animate={{ clipPath: "inset(0 0 0% 0)" }}
             exit={{ clipPath: "inset(0 0 100% 0)" }}

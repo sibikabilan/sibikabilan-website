@@ -57,7 +57,8 @@ export function CinematicVideo({
     <video
       ref={ref}
       className={cx("h-full w-full object-cover", className)}
-      poster={poster}
+      // The poster waits until the video is near too, so offscreen clips cost nothing up front.
+      poster={near ? poster : undefined}
       src={near ? src : undefined}
       muted
       playsInline

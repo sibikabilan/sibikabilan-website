@@ -1,24 +1,59 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublishedPosts, getSettings } from "@/lib/cms/queries";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { formatDate } from "@/lib/utils";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { AUTHOR, IDS, absoluteUrl, breadcrumbNode, graph, pageMeta } from "@/lib/seo";
+import { SITE } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Writing",
-  description: "Essays and notes by Sibi Kabilan on AI agents, Agentic UI and building AI people trust with real money.",
-  alternates: { canonical: "/blog" },
-};
+const TITLE = "Writing: essays on Agentic UI and AI agents";
+const DESCRIPTION =
+  "Essays by Sibi Kabilan, co founder of SuprAgent, on Agentic UI, putting AI agents into production, and building companies and products people rely on.";
+
+export const metadata = pageMeta({
+  title: `${TITLE} · ${SITE.name}`,
+  socialTitle: TITLE,
+  description: DESCRIPTION,
+  path: "/blog",
+});
 
 export default async function BlogIndex() {
   const [settings, posts] = await Promise.all([getSettings(), getPublishedPosts()]);
   if (!settings.showWriting) notFound();
   const tags = Array.from(new Set(posts.flatMap((p) => p.tags))).slice(0, 12);
 
+  const jsonLd = graph(
+    {
+      "@type": "Blog",
+      "@id": IDS.blog,
+      url: absoluteUrl("/blog"),
+      name: `Writing by ${SITE.name}`,
+      description: DESCRIPTION,
+      inLanguage: "en",
+      author: AUTHOR,
+      publisher: { "@id": IDS.person },
+      isPartOf: { "@id": IDS.website },
+      blogPost: posts.map((p) => ({
+        "@type": "BlogPosting",
+        "@id": `${absoluteUrl(`/blog/${p.slug}`)}#article`,
+        headline: p.title,
+        url: absoluteUrl(`/blog/${p.slug}`),
+        datePublished: p.publishedAt ?? undefined,
+        dateModified: p.updatedAt,
+        author: AUTHOR,
+      })),
+    },
+    breadcrumbNode([
+      { name: "Home", path: "/" },
+      { name: "Writing", path: "/blog" },
+    ])
+  );
+
   return (
     <div data-scene="network" data-scene-side="1" data-scene-opacity="0.5">
+      <JsonLd data={jsonLd} />
       <PageHeader
         eyebrow="Writing"
         title="Notes from the build."

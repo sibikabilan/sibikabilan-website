@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif, Newsreader } from "next/font/google";
 import { SITE } from "@/lib/site";
+import { FEEDS } from "@/lib/seo";
 import { getSettings } from "@/lib/cms/queries";
 import "./globals.css";
 
@@ -16,12 +17,16 @@ const geist = Geist({ variable: "--font-geist", subsets: ["latin"], display: "sw
 
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 
+// The reading face (about 280 KB with its optical size axis) sets essay and
+// chapter bodies, which sit below the opening view. It still loads on every
+// page that uses it, just without a preload competing with the hero.
 const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin"],
   style: ["normal", "italic"],
   axes: ["opsz"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -31,25 +36,18 @@ export const metadata: Metadata = {
     template: `%s · ${SITE.name}`,
   },
   description: SITE.description,
-  keywords: [
-    "Sibi Kabilan",
-    "AI founder",
-    "SuprAgent",
-    "AI agents",
-    "Agentic UI",
-    "financial services AI",
-    "KayaDev AI",
-    "fiction",
-  ],
+  applicationName: SITE.name,
+  keywords: [...SITE.keywords],
   authors: [{ name: SITE.name, url: SITE.url }],
   creator: SITE.name,
-  alternates: {
-    canonical: "/",
-    types: { "application/rss+xml": [{ url: "/rss.xml", title: "Sibi Kabilan, writing" }] },
-  },
+  publisher: SITE.name,
+  category: "personal website",
+  // Each page sets its own canonical; only the feed link is shared.
+  alternates: { types: FEEDS },
+  // Pages override these with their own title, URL and image (see pageMeta in lib/seo).
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: SITE.locale,
     url: SITE.url,
     title: SITE.title,
     description: SITE.description,
@@ -60,7 +58,12 @@ export const metadata: Metadata = {
     title: SITE.title,
     description: SITE.description,
   },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  },
+  formatDetection: { email: false, address: false, telephone: false },
 };
 
 export const viewport: Viewport = {

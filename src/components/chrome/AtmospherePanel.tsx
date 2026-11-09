@@ -80,7 +80,7 @@ export function AtmospherePanel({ open, onClose }: { open: boolean; onClose: () 
           <Toggle
             label="Motion"
             options={[
-              { value: "cinematic", label: "Cinematic" },
+              { value: "cinematic", label: "Full" },
               { value: "calm", label: "Calm" },
             ]}
             value={state.motion}
@@ -88,7 +88,7 @@ export function AtmospherePanel({ open, onClose }: { open: boolean; onClose: () 
           />
           <div className="h-3" />
           <Toggle
-            label="Film grain"
+            label="Grain"
             options={[
               { value: "on", label: "On" },
               { value: "off", label: "Off" },

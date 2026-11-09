@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { MARK_BODY, MARK_TAIL, MARK_VIEWBOX, MARK_WING } from "./Mark";
 
-/** A short title card on the first visit of a session: letterbox, count, open. */
+/** A brief hello on the first visit of a session: the dove gathers itself and lifts, the name settles, the page opens. */
 export function Intro() {
   const [show, setShow] = useState(true);
-  const [count, setCount] = useState(0);
 
   useEffect(() => {
     let seen = false;
@@ -16,24 +16,16 @@ export function Intro() {
     } catch {
       seen = false;
     }
-    const calm = document.documentElement.dataset.motion === "calm" ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const calm =
+      document.documentElement.dataset.motion === "calm" || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (seen || calm) {
-      // A returning visitor skips the title card.
+      // A returning visitor goes straight in.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShow(false);
       return;
     }
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / 1500);
-      setCount(Math.round(p * 100));
-      if (p < 1) raf = requestAnimationFrame(tick);
-      else window.setTimeout(() => setShow(false), 250);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const t = window.setTimeout(() => setShow(false), 1900);
+    return () => window.clearTimeout(t);
   }, []);
 
   return (
@@ -41,29 +33,50 @@ export function Intro() {
       {show && (
         <motion.div
           key="intro"
-          className="intro-card fixed inset-0 z-[100] flex items-center justify-center"
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.9, delay: 0.5 }}
+          className="intro-card fixed inset-0 z-[100] flex items-center justify-center bg-[#09090b]"
+          exit={{ opacity: 0, transition: { duration: 0.9, ease: "easeInOut" } }}
           aria-hidden
         >
-          <motion.div
-            className="absolute inset-x-0 top-0 h-1/2 bg-black"
-            exit={{ y: "-100%" }}
-            transition={{ duration: 1.1, ease: [0.76, 0, 0.24, 1] }}
-          />
-          <motion.div
-            className="absolute inset-x-0 bottom-0 h-1/2 bg-black"
-            exit={{ y: "100%" }}
-            transition={{ duration: 1.1, ease: [0.76, 0, 0.24, 1] }}
-          />
-          <motion.div className="relative text-center" exit={{ opacity: 0, filter: "blur(8px)" }} transition={{ duration: 0.4 }}>
-            <p className="font-mono text-[11px] uppercase tracking-[0.4em] text-[#8c867d]">A film by</p>
-            <p className="display mt-4 text-5xl text-[#ede7dd] md:text-6xl">
-              Sibi <em className="text-[color:var(--key)]">Kabilan</em>
-            </p>
-            <p className="mt-6 font-mono text-[11px] tabular-nums tracking-[0.3em] text-[#57534d]">
-              {String(count).padStart(3, "0")}
-            </p>
+          <motion.div className="flex flex-col items-center" exit={{ y: -12, filter: "blur(6px)" }} transition={{ duration: 0.8 }}>
+            <motion.svg
+              width="76"
+              height="76"
+              viewBox={MARK_VIEWBOX}
+              fill="#ede7dd"
+              initial={{ y: 10 }}
+              animate={{ y: -4 }}
+              transition={{ duration: 1.6, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <motion.path
+                d={MARK_WING}
+                fillRule="evenodd"
+                style={{ transformOrigin: "640px 540px" }}
+                initial={{ opacity: 0, rotate: -18, scale: 0.9 }}
+                animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+              />
+              <motion.path
+                d={MARK_BODY}
+                fillRule="evenodd"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+              />
+              <motion.path
+                d={MARK_TAIL}
+                initial={{ opacity: 0, x: -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.45 }}
+              />
+            </motion.svg>
+            <motion.p
+              className="display mt-5 text-3xl text-[#ede7dd]"
+              initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ delay: 0.7, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            >
+              Sibi <em className="text-[#bdb6aa]">Kabilan</em>
+            </motion.p>
           </motion.div>
         </motion.div>
       )}

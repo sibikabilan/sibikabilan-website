@@ -20,19 +20,19 @@ export function PageHeader({
     <header className="relative overflow-hidden">
       {image && (
         <div className="grade absolute inset-0 -z-0 opacity-60">
-          <Image src={image} alt={imageAlt} fill priority sizes="100vw" className="object-cover" />
+          <Image src={image} alt={imageAlt} fill loading="eager" fetchPriority="high" sizes="100vw" className="object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg)]/40 via-[var(--bg)]/70 to-[var(--bg)]" />
         </div>
       )}
       <div className="relative mx-auto max-w-[1400px] px-5 pb-16 pt-[calc(var(--nav-h)+5rem)] md:px-10 md:pb-24 md:pt-[calc(var(--nav-h)+8rem)]">
-        <Reveal>
+        <Reveal immediate>
           <p className="eyebrow">{eyebrow}</p>
         </Reveal>
         <h1 className="display mt-6 max-w-[16ch] text-[clamp(3.2rem,9vw,8rem)] text-ink">
-          <TitleReveal text={title} italicWords={italic} />
+          <TitleReveal text={title} italicWords={italic} immediate />
         </h1>
         {lede && (
-          <Reveal delay={0.15} className="lede mt-8 max-w-[620px]">
+          <Reveal immediate delay={0.15} className="lede mt-8 max-w-[620px]">
             {lede}
           </Reveal>
         )}

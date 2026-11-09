@@ -2,33 +2,36 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { useAtmosphere } from "@/lib/stores";
+import { portraitStore, useAtmosphere } from "@/lib/stores";
 import { ATMOSPHERES } from "@/lib/atmosphere";
+import { SPOKEN_END, SPOKEN_HAS_VOICE, SPOKEN_LINE } from "@/lib/spoken";
 
 /**
- * Sibi, talking, then decompiled into code and rendered back into himself.
- * A transparent video drives a shader that blends the footage with a field
- * of glyphs sampled from the same frame, with glitch bands on the way in and
- * out. Loops every 13 seconds.
+ * Sibi says his line, then comes apart: first into falling green numbers,
+ * then into a constellation of connected points, and a render pass sweeps
+ * him back into the real footage. The clip restarts every cycle so the line
+ * is always spoken over live footage, and each word is published to
+ * `portraitStore` so the caption beside him lights up in time.
  */
 
-const CYCLE = 13;
+/** The line is spoken first; the transformation starts once the last word has landed. */
+const T0 = Math.max(4.2, SPOKEN_END + 0.9);
+const CYCLE = T0 + 9.4;
+const smooth = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+const stages = (t: number) => ({
+  toCode: smooth((t - T0) / 1.4),
+  toNet: smooth((t - (T0 + 3)) / 1.3),
+  toReal: smooth((t - (T0 + 6)) / 1.6),
+});
 const PHASES = [
-  { until: 4.5, label: "Rendering · live" },
-  { until: 6.3, label: "Decompiling" },
-  { until: 8.8, label: "In code" },
-  { until: 10.6, label: "Recompiling" },
-  { until: CYCLE, label: "Rendering · live" },
+  { until: T0, label: "Live" },
+  { until: T0 + 1.4, label: "Decompiling" },
+  { until: T0 + 3, label: "In code" },
+  { until: T0 + 4.3, label: "Rewiring" },
+  { until: T0 + 6, label: "Connected" },
+  { until: T0 + 7.6, label: "Rendering" },
+  { until: CYCLE, label: "Live" },
 ];
-
-function mixAt(t: number) {
-  const s = (x: number) => x * x * (3 - 2 * x);
-  if (t < 4.5) return 0;
-  if (t < 6.3) return s((t - 4.5) / 1.8);
-  if (t < 8.8) return 1;
-  if (t < 10.6) return 1 - s((t - 8.8) / 1.8);
-  return 0;
-}
 
 const vertex = /* glsl */ `
   varying vec2 vUv;
@@ -39,53 +42,169 @@ const fragment = /* glsl */ `
   uniform sampler2D uVideo;
   uniform sampler2D uGlyphs;
   uniform float uTime;
-  uniform float uMix;
+  uniform float uToCode;
+  uniform float uToNet;
+  uniform float uToReal;
   uniform float uGrid;
-  uniform vec3 uTint;
+  uniform float uNetGrid;
+  uniform vec3 uGreen;
+  uniform vec3 uNode;
   uniform vec3 uHot;
   varying vec2 vUv;
 
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  vec2 hash2(vec2 p) {
+    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+  }
+  float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
-  void main() {
-    vec2 uv = vUv;
-    float glitch = uMix * (1.0 - uMix) * 4.0;
+  // The clip is packed: colour in the top half, the transparency matte in the bottom half.
+  vec4 vid(vec2 p) {
+    p = clamp(p, vec2(0.0, 0.003), vec2(1.0, 0.997));
+    vec3 c = texture2D(uVideo, vec2(p.x, 0.5 + p.y * 0.5)).rgb;
+    float a = texture2D(uVideo, vec2(p.x, p.y * 0.5)).r;
+    return vec4(c, smoothstep(0.08, 0.92, a));
+  }
+
+  // ── the footage, with glitch bands while it transforms ──
+  vec4 realAt(vec2 uv, float glitch) {
     float band = floor(uv.y * 46.0);
-    float on = step(0.7, hash(vec2(band, floor(uTime * 9.0))));
-    float shift = (hash(vec2(band, floor(uTime * 18.0))) - 0.5) * 0.09 * glitch * on;
+    float on = step(0.72, hash(vec2(band, floor(uTime * 9.0))));
+    float shift = (hash(vec2(band, floor(uTime * 18.0))) - 0.5) * 0.08 * glitch * on;
+    vec4 c = vid(vec2(uv.x + shift, uv.y));
+    if (glitch > 0.001) {
+      c.r = vid(vec2(uv.x + shift + 0.006 * glitch, uv.y)).r;
+      c.b = vid(vec2(uv.x + shift - 0.006 * glitch, uv.y)).b;
+    }
+    return vec4(c.rgb * c.a, c.a);
+  }
 
-    vec4 real = texture2D(uVideo, vec2(uv.x + shift, uv.y));
-    real.r = texture2D(uVideo, vec2(uv.x + shift + 0.007 * glitch, uv.y)).r;
-    real.b = texture2D(uVideo, vec2(uv.x + shift - 0.007 * glitch, uv.y)).b;
-
+  // ── falling green numbers, dense where his face is bright ──
+  vec4 rainAt(vec2 uv) {
     vec2 grid = vec2(uGrid);
     vec2 cell = floor(uv * grid);
     vec2 cuv = fract(uv * grid);
-    vec4 s = texture2D(uVideo, (cell + 0.5) / grid);
-    float lum = dot(s.rgb, vec3(0.299, 0.587, 0.114));
+    vec4 s = vid((cell + 0.5) / grid);
+    float lum = luma(s.rgb);
+    float y = (cell.y + 0.5) / grid.y;
 
-    float seed = hash(vec2(cell.x, 7.0));
-    float fall = fract(uTime * (0.18 + seed * 0.3) + seed + cell.y / grid.y);
-    float trail = pow(fall, 7.0);
-    float g = floor(hash(cell + floor(uTime * (1.5 + seed * 6.0))) * 64.0);
+    float trail = 0.0;
+    float headHit = 0.0;
+    for (int k = 0; k < 2; k++) {
+      float seed = hash(vec2(cell.x, 11.0 + float(k) * 17.0));
+      float speed = 0.22 + seed * 0.38;
+      float head = 1.0 - fract(uTime * speed + seed * 3.7);
+      float d = fract(y - head);
+      trail = max(trail, pow(1.0 - d, 5.0 + seed * 6.0));
+      headHit = max(headHit, step(d, 1.2 / grid.y));
+    }
+
+    float rate = 2.0 + hash(cell) * 7.0;
+    float g = floor(hash(cell + floor(uTime * rate)) * 64.0);
     vec2 gp = vec2(mod(g, 8.0), floor(g / 8.0));
     float glyph = texture2D(uGlyphs, (gp + cuv) / 8.0).r;
 
-    vec3 base = mix(uTint, vec3(1.0), 0.35) * (0.6 + lum * 1.6);
-    vec3 codeCol = mix(base, uHot * 1.3, trail * 0.9);
-    float codeA = glyph * s.a * clamp(0.55 + lum * 1.5 + trail, 0.0, 1.0);
+    float shade = smoothstep(0.06, 0.72, lum);
+    float body = 0.07 + shade * 0.85;
+    vec3 col = uGreen * (0.45 + shade * 0.75 + trail * 0.9);
+    col = mix(col, vec3(0.88, 1.0, 0.92), headHit * 0.9);
+    float a = glyph * s.a * clamp(body + trail * 1.15 + headHit, 0.0, 1.0);
+    return vec4(col * a, a);
+  }
 
-    float n = hash(cell * 1.37);
-    float m = smoothstep(n - 0.22, n + 0.22, uMix * 1.44 - 0.22);
-    vec3 col = mix(real.rgb, codeCol, m);
-    float alpha = mix(real.a, codeA, m);
-    col *= 0.95 + 0.05 * sin(uv.y * 900.0 + uTime * 3.0);
-    gl_FragColor = vec4(col * alpha, alpha);
+  // ── a constellation: points inside his silhouette, linked to their neighbours ──
+  vec2 netPoint(vec2 id) {
+    vec2 h = hash2(id);
+    return id + 0.5 + 0.36 * vec2(sin(uTime * 0.55 + h.x * 6.2831), cos(uTime * 0.47 + h.y * 6.2831));
+  }
+  vec2 segment(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p - a;
+    vec2 ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return vec2(length(pa - ba * h), h);
+  }
+  vec4 netAt(vec2 uv) {
+    float N = uNetGrid;
+    vec2 p = uv * N;
+    vec2 id = floor(p);
+    vec2 pts[9];
+    float on[9];
+    float lum[9];
+    for (int j = 0; j < 3; j++) {
+      for (int i = 0; i < 3; i++) {
+        int k = j * 3 + i;
+        vec2 q = netPoint(id + vec2(float(i) - 1.0, float(j) - 1.0));
+        vec4 s = vid(q / N);
+        pts[k] = q;
+        on[k] = smoothstep(0.35, 0.75, s.a);
+        lum[k] = luma(s.rgb);
+      }
+    }
+    float dots = 0.0;
+    float lines = 0.0;
+    float pulse = 0.0;
+    for (int k = 0; k < 9; k++) {
+      float r = 0.05 + lum[k] * 0.11;
+      dots = max(dots, on[k] * smoothstep(r, r * 0.25, length(p - pts[k])));
+      if (k != 4) {
+        vec2 sg = segment(p, pts[4], pts[k]);
+        float len = length(pts[4] - pts[k]);
+        float w = on[4] * on[k] * smoothstep(1.75, 0.9, len);
+        lines = max(lines, w * smoothstep(0.045, 0.0, sg.x) * (0.35 + 0.4 * (lum[4] + lum[k])));
+        float travel = fract(uTime * 0.45 + hash(pts[4] + pts[k]));
+        pulse = max(pulse, w * smoothstep(0.06, 0.0, sg.x) * smoothstep(0.09, 0.0, abs(sg.y - travel)));
+      }
+    }
+    // the four links between side neighbours close the triangles
+    vec2 e1 = segment(p, pts[1], pts[3]);
+    vec2 e2 = segment(p, pts[1], pts[5]);
+    vec2 e3 = segment(p, pts[7], pts[3]);
+    vec2 e4 = segment(p, pts[7], pts[5]);
+    lines = max(lines, on[1] * on[3] * smoothstep(0.04, 0.0, e1.x) * 0.5);
+    lines = max(lines, on[1] * on[5] * smoothstep(0.04, 0.0, e2.x) * 0.5);
+    lines = max(lines, on[7] * on[3] * smoothstep(0.04, 0.0, e3.x) * 0.5);
+    lines = max(lines, on[7] * on[5] * smoothstep(0.04, 0.0, e4.x) * 0.5);
+
+    vec4 s = vid(uv);
+    float ghost = s.a * (0.05 + luma(s.rgb) * 0.16);
+    vec3 col = uNode * (lines * 0.85 + ghost) + mix(uNode, vec3(1.0), 0.6) * dots + uHot * pulse * 1.4;
+    float a = clamp(max(max(dots, lines * 0.9), ghost) + pulse, 0.0, 1.0);
+    return vec4(col, a);
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    float glitch = 4.0 * uToCode * (1.0 - uToCode) + 2.0 * uToNet * (1.0 - uToNet) + 2.4 * uToReal * (1.0 - uToReal);
+    vec4 real = realAt(uv, glitch);
+    vec4 rain = rainAt(uv);
+    vec4 net = netAt(uv);
+
+    // footage → numbers: cell by cell
+    float n = hash(floor(uv * uGrid) * 1.37);
+    float m1 = smoothstep(n - 0.2, n + 0.2, uToCode * 1.4 - 0.2);
+    // numbers → constellation: cell by cell, coarser
+    float nb = hash(floor(uv * uNetGrid) * 2.11);
+    float m2 = smoothstep(nb - 0.2, nb + 0.2, uToNet * 1.4 - 0.2);
+    // constellation → footage: a render pass sweeping down
+    float front = uToReal * 1.16 - 0.08;
+    float depth = 1.0 - uv.y;
+    float m3 = 1.0 - smoothstep(front - 0.05, front, depth);
+    float scan = exp(-pow((depth - front) * 70.0, 2.0)) * step(0.001, uToReal) * step(uToReal, 0.999);
+
+    vec4 col = mix(real, rain, m1);
+    col = mix(col, net, m2);
+    col = mix(col, real, m3);
+    float edge = scan * max(real.a, net.a);
+    col.rgb += uHot * edge * 0.9;
+    col.a = max(col.a, edge * 0.6);
+    col.rgb *= 0.96 + 0.04 * sin(uv.y * 900.0 + uTime * 3.0);
+    gl_FragColor = col;
   }
 `;
 
+/** Numbers mostly, with a few mirrored katakana, the way the rain looks in the films. */
 function glyphAtlas(): THREE.CanvasTexture {
-  const chars = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワ<>/{}=+*#$%&@;:[]";
+  const kana = "アイウエオカキクケコサシスセソタチツテトナニヌ";
   const c = document.createElement("canvas");
   c.width = 512;
   c.height = 512;
@@ -95,14 +214,33 @@ function glyphAtlas(): THREE.CanvasTexture {
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = "600 42px ui-monospace, Menlo, monospace";
+  ctx.font = "600 44px ui-monospace, Menlo, monospace";
   for (let i = 0; i < 64; i++) {
-    ctx.fillText(chars[i % chars.length], (i % 8) * 64 + 32, Math.floor(i / 8) * 64 + 34);
+    const x = (i % 8) * 64 + 32;
+    const y = Math.floor(i / 8) * 64 + 34;
+    if (i < 44) {
+      ctx.fillText(String(i % 10), x, y);
+    } else {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(-1, 1);
+      ctx.fillText(kana[(i - 44) % kana.length], 0, 0);
+      ctx.restore();
+    }
   }
   const t = new THREE.CanvasTexture(c);
   t.minFilter = THREE.LinearFilter;
   t.generateMipmaps = false;
   return t;
+}
+
+function wordAt(t: number) {
+  if (t > SPOKEN_END) return -1;
+  let w = -1;
+  SPOKEN_LINE.forEach((x, i) => {
+    if (t >= x.at) w = i;
+  });
+  return w;
 }
 
 export function CodePortrait({ className = "" }: { className?: string }) {
@@ -112,7 +250,27 @@ export function CodePortrait({ className = "" }: { className?: string }) {
   const [src, setSrc] = useState<string | null>(null);
   const [phase, setPhase] = useState(0);
   const [ready, setReady] = useState(false);
-  const { motion, atmosphere } = useAtmosphere();
+  // Sound is on by default. Browsers only allow audible playback once the visitor
+  // has tapped, clicked or pressed a key on the page, so until then the clip plays
+  // silently and the first such interaction brings the voice in from the top.
+  const [muted, setMuted] = useState(false);
+  const [audible, setAudible] = useState(false);
+  const wantSound = useRef(true);
+  const restartRef = useRef<(withSound?: boolean) => void>(() => undefined);
+
+  useEffect(() => {
+    let off = false;
+    try {
+      off = localStorage.getItem("sk-sound") === "off";
+    } catch {
+      off = false;
+    }
+    wantSound.current = !off;
+    // The visitor's own mute choice is remembered on this device.
+    if (off) setMuted(true);
+  }, []);
+  // The portrait is content, not decoration: it plays in calm mode too.
+  const { atmosphere } = useAtmosphere();
   const colors = useRef(ATMOSPHERES[atmosphere]);
 
   useEffect(() => {
@@ -120,18 +278,15 @@ export function CodePortrait({ className = "" }: { className?: string }) {
   }, [atmosphere]);
 
   useEffect(() => {
-    const ua = navigator.userAgent;
-    const safari = /Safari\//.test(ua) && !/Chrome\/|Chromium\/|Edg\/|Android/.test(ua);
-    // Picks the alpha video format this browser can composite.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSrc(safari ? "/media/sibi-talk.mov" : "/media/sibi-talk.webm");
+    // One packed H.264 clip (colour over matte) plays and uploads to WebGL in every browser.
+    setSrc("/media/sibi-talk.mp4");
   }, []);
 
   useEffect(() => {
     const v = video.current;
     const cv = canvas.current;
     const box = wrap.current;
-    if (!v || !cv || !box || !src || motion === "calm") return;
+    if (!v || !cv || !box || !src) return;
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -141,6 +296,8 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     }
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const gl = renderer.getContext();
+    const probe = new Uint8Array(4);
 
     const tex = new THREE.VideoTexture(v);
     tex.colorSpace = THREE.NoColorSpace;
@@ -155,9 +312,13 @@ export function CodePortrait({ className = "" }: { className?: string }) {
         uVideo: { value: tex },
         uGlyphs: { value: glyphs },
         uTime: { value: 0 },
-        uMix: { value: 0 },
-        uGrid: { value: 68 },
-        uTint: { value: new THREE.Color(c.rim) },
+        uToCode: { value: 0 },
+        uToNet: { value: 0 },
+        uToReal: { value: 0 },
+        uGrid: { value: 72 },
+        uNetGrid: { value: 30 },
+        uGreen: { value: new THREE.Color("#34f07a") },
+        uNode: { value: new THREE.Color(c.beam) },
         uHot: { value: new THREE.Color(c.key) },
       },
       blending: THREE.NoBlending,
@@ -169,76 +330,244 @@ export function CodePortrait({ className = "" }: { className?: string }) {
     const resize = () => {
       const w = box.clientWidth;
       renderer.setSize(w, w, false);
-      mat.uniforms.uGrid.value = w < 480 ? 46 : 68;
+      mat.uniforms.uGrid.value = w < 480 ? 54 : 80;
+      mat.uniforms.uNetGrid.value = w < 480 ? 22 : 30;
     };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(box);
 
     let raf = 0;
+    let frames = 0;
+    let confirmed = false;
     let visible = false;
     let lastPhase = -1;
-    const start = performance.now();
+    let lastWord = -2;
+    let cycleStart = 0;
+    // Every restart gets a ticket, so a slower, older play() can't undo a newer one.
+    let ticket = 0;
+    const restart = (withSound?: boolean) => {
+      const mine = ++ticket;
+      cycleStart = performance.now();
+      v.currentTime = 0;
+      const activated =
+        (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive ?? false;
+      // Inside a tap we may always ask for sound; otherwise only once the visitor has interacted.
+      v.muted = !(wantSound.current && (withSound ?? activated));
+      v.play()
+        .then(() => {
+          if (mine === ticket) setAudible(!v.muted);
+        })
+        .catch((err: unknown) => {
+          if (mine !== ticket) return;
+          // Only a refusal of sound falls back to silent playback; an interrupted play() is not a refusal.
+          if (err instanceof DOMException && err.name === "NotAllowedError" && !v.muted) {
+            v.muted = true;
+            setAudible(false);
+            v.play().catch(() => undefined);
+          }
+        });
+    };
+    restartRef.current = restart;
+
     const loop = () => {
       raf = requestAnimationFrame(loop);
       if (!visible || v.readyState < 2) return;
-      const t = ((performance.now() - start) / 1000) % CYCLE;
+      let t = (performance.now() - cycleStart) / 1000;
+      if (t >= CYCLE) {
+        restart();
+        t = 0;
+      }
       const p = PHASES.findIndex((x) => t < x.until);
       if (p !== lastPhase) {
         lastPhase = p;
         setPhase(p);
       }
+      const w = wordAt(t);
+      if (w !== lastWord) {
+        lastWord = w;
+        portraitStore.set({ word: w, said: Math.max(portraitStore.get().said, w) });
+      }
+      const s = stages(t);
       mat.uniforms.uTime.value = performance.now() / 1000;
-      mat.uniforms.uMix.value = mixAt(t);
+      mat.uniforms.uToCode.value = s.toCode;
+      mat.uniforms.uToNet.value = s.toNet;
+      mat.uniforms.uToReal.value = s.toReal;
       const col = colors.current;
-      (mat.uniforms.uTint.value as THREE.Color).lerp(new THREE.Color(col.rim), 0.05);
+      (mat.uniforms.uNode.value as THREE.Color).lerp(new THREE.Color(col.beam), 0.05);
       (mat.uniforms.uHot.value as THREE.Color).lerp(new THREE.Color(col.key), 0.05);
       renderer.render(scene, cam);
+      // Only hide the still once the canvas really shows him. Some phones play the
+      // clip but hand WebGL empty frames; then the still simply stays.
+      frames += 1;
+      if (!confirmed && frames % 6 === 0) {
+        const W = gl.drawingBufferWidth;
+        const H = gl.drawingBufferHeight;
+        for (const [fx, fy] of [[0.5, 0.55], [0.5, 0.35], [0.42, 0.7]]) {
+          gl.readPixels(Math.floor(W * fx), Math.floor(H * fy), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, probe);
+          if (probe[3] > 24) {
+            confirmed = true;
+            setReady(true);
+            portraitStore.set({ live: true });
+            break;
+          }
+        }
+      }
     };
     loop();
 
-    const io = new IntersectionObserver(([e]) => {
-      visible = e.isIntersecting;
-      if (visible) v.play().catch(() => undefined);
-      else v.pause();
-    });
+    // Start the line from the top each time he comes into view.
+    const io = new IntersectionObserver(
+      ([e]) => {
+        const was = visible;
+        visible = e.isIntersecting;
+        if (visible && !was) restart();
+        else if (!visible) {
+          v.pause();
+          portraitStore.set({ word: -1 });
+          lastWord = -2;
+        }
+      },
+      { threshold: 0.35 }
+    );
     io.observe(box);
-    const onReady = () => setReady(true);
-    v.addEventListener("playing", onReady);
+    // If autoplay was held back, the first scroll starts the clip (silently).
+    const nudge = () => {
+      if (visible && v.paused) v.play().catch(() => undefined);
+    };
+    // The first tap, click or key press anywhere lets the voice in: replay the line with sound.
+    // The sound button handles its own taps.
+    const unlock = (e: Event) => {
+      const t = e.target as Element | null;
+      if (t && typeof t.closest === "function" && t.closest("[data-sound-toggle]")) return;
+      if (visible && wantSound.current && v.muted) restart(true);
+      else nudge();
+    };
+    window.addEventListener("click", unlock, { passive: true });
+    window.addEventListener("touchend", unlock, { passive: true });
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("wheel", nudge, { passive: true });
 
     return () => {
       cancelAnimationFrame(raf);
       io.disconnect();
       ro.disconnect();
-      v.removeEventListener("playing", onReady);
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("touchend", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("wheel", nudge);
+      portraitStore.set({ live: false, word: -1 });
       tex.dispose();
       glyphs.dispose();
       mat.dispose();
       renderer.dispose();
     };
-  }, [src, motion]);
+  }, [src]);
 
-  const calm = motion === "calm";
+  const remember = (on: boolean) => {
+    try {
+      localStorage.setItem("sk-sound", on ? "on" : "off");
+    } catch {
+      /* storage unavailable */
+    }
+  };
+  // Muting is instant. Unmuting (or tapping while sound is still held back) plays
+  // the line again from the first word, inside the tap, so phones allow the sound.
+  const toggleSound = () => {
+    const v = video.current;
+    if (!v) return;
+    if (!muted && audible) {
+      wantSound.current = false;
+      v.muted = true;
+      setMuted(true);
+      setAudible(false);
+      remember(false);
+      return;
+    }
+    wantSound.current = true;
+    setMuted(false);
+    remember(true);
+    restartRef.current(true);
+  };
+  const hearing = !muted && audible;
+  const waiting = !muted && !audible;
   return (
-    <div className={className}>
+    <div className={`relative ${className}`}>
       <div ref={wrap} className="code-portrait relative aspect-square w-full">
-        {/* The still shows first, and stays in calm mode. */}
+        {src && (
+          <video
+            ref={video}
+            src={src}
+            muted
+            playsInline
+            autoPlay
+            preload="auto"
+            className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-[0.01]"
+            aria-hidden
+          />
+        )}
+        {/* The still shows until the canvas has real frames of him. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/media/sibi-talk-poster.webp"
+          src="/media/sibi-portrait.webp"
           alt="Sibi Kabilan"
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-contain transition-opacity duration-700"
-          style={{ opacity: ready && !calm ? 0 : 1 }}
+          style={{ opacity: ready ? 0 : 1 }}
         />
-        <canvas ref={canvas} className="absolute inset-0 h-full w-full" style={{ opacity: ready && !calm ? 1 : 0 }} aria-hidden />
-        {src && <video ref={video} src={src} muted playsInline loop preload="auto" className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />}
+        <canvas ref={canvas} className="absolute inset-0 h-full w-full" style={{ opacity: ready ? 1 : 0 }} aria-hidden />
       </div>
+      {SPOKEN_HAS_VOICE && waiting && ready && (
+        <button
+          type="button"
+          data-sound-toggle
+          onClick={toggleSound}
+          className="absolute bottom-[16%] left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/45 px-4 py-2 text-[12.5px] text-ink backdrop-blur-md transition-colors hover:border-[color:var(--key)]"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z" fill="currentColor" />
+            <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.2 6.5a7.8 7.8 0 0 1 0 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          Tap to hear Sibi
+        </button>
+      )}
       <div className="mt-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.26em] text-faint">
         <span className="flex items-center gap-2">
-          <i className={`h-1.5 w-1.5 rounded-full ${phase === 2 ? "bg-[var(--rim)]" : "bg-[var(--key)]"} ${calm ? "" : "animate-pulse"}`} />
-          {calm ? "Sibi Kabilan" : PHASES[phase].label}
+          <i
+            className={`h-1.5 w-1.5 rounded-full ${phase === 1 || phase === 2 ? "bg-[#34f07a]" : phase >= 3 && phase <= 5 ? "bg-[var(--beam)]" : "bg-[var(--key)]"} animate-pulse`}
+          />
+          {PHASES[phase].label}
         </span>
-        <span>sibi.render()</span>
+        {SPOKEN_HAS_VOICE ? (
+          <span className="flex items-center gap-3">
+            {waiting && <span className="hidden normal-case tracking-[0.12em] text-muted sm:inline">Tap for sound</span>}
+            <button
+              type="button"
+              data-sound-toggle
+              onClick={toggleSound}
+              aria-label={hearing ? "Mute Sibi's voice" : "Unmute Sibi's voice"}
+              title={hearing ? "Mute" : "Unmute"}
+              aria-pressed={!hearing}
+              className={`relative grid h-10 w-10 place-items-center rounded-full border text-ink transition-colors duration-300 ${hearing ? "border-[var(--line-strong)] bg-white/[0.04] hover:border-[color:var(--key)]" : "border-[color:var(--key)] bg-[color-mix(in_oklab,var(--key)_12%,transparent)]"}`}
+            >
+              {waiting && <span aria-hidden className="absolute inset-0 animate-ping rounded-full border border-[color:var(--key)] opacity-40" />}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z" fill="currentColor" />
+                {hearing ? (
+                  <>
+                    <path d="M15.5 9a4.2 4.2 0 0 1 0 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    <path d="M18.2 6.5a7.8 7.8 0 0 1 0 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </>
+                ) : (
+                  <path d="M16 9.5l5 5M21 9.5l-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                )}
+              </svg>
+            </button>
+          </span>
+        ) : (
+          <span>sibi.render()</span>
+        )}
       </div>
     </div>
   );

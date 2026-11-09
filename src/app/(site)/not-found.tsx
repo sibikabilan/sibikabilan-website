@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Page not found",
+  description:
+    "This page ended up on the cutting room floor. Head back to Sibi Kabilan's home page, his essays on Agentic UI and AI agents, or the fiction library.",
+  robots: { index: false, follow: true },
+};
 
 export default function NotFound() {
   return (

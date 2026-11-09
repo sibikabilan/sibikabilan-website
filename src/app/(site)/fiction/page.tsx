@@ -1,64 +1,100 @@
-import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublishedWorks, getSettings } from "@/lib/cms/queries";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Reveal } from "@/components/ui/Reveal";
-import { WorkCover } from "@/components/fiction/WorkCover";
+import { getPublishedWorks, getSettings, type PublicWork } from "@/lib/cms/queries";
+import { markdownToHtml } from "@/lib/markdown";
+import { Reveal, TitleReveal } from "@/components/ui/Reveal";
+import { Library } from "@/components/fiction/Library";
+import { introWithoutTitle, placeholderVolume, type Volume } from "@/components/fiction/volume";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { AUTHOR, IDS, absoluteUrl, breadcrumbNode, graph, pageMeta } from "@/lib/seo";
+import { SITE } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Fiction",
-  description: "Stories by Sibi Kabilan, published a chapter at a time.",
-  alternates: { canonical: "/fiction" },
-};
+const TITLE = "Fiction: stories told a chapter at a time";
+const DESCRIPTION =
+  "Fiction by Sibi Kabilan: stories published a chapter at a time and free to read. Browse the shelf, take a book down and open it to the first chapter.";
+
+export const metadata = pageMeta({
+  title: `${TITLE} · ${SITE.name}`,
+  socialTitle: TITLE,
+  description: DESCRIPTION,
+  path: "/fiction",
+});
+
+async function toVolume(w: PublicWork): Promise<Volume> {
+  return {
+    slug: w.slug,
+    title: w.title,
+    tagline: w.tagline,
+    synopsisHtml: w.synopsis ? await markdownToHtml(w.synopsis) : "",
+    genre: w.genre,
+    kind: w.kind,
+    progress: w.progress,
+    cover: w.cover,
+    chapters: w.chapters.map((c) => ({
+      slug: c.slug,
+      title: c.title,
+      summary: c.summary,
+      minutes: Math.max(1, Math.round(c.wordCount / 250)),
+    })),
+    words: w.chapters.reduce((n, c) => n + c.wordCount, 0),
+  };
+}
 
 export default async function FictionLibrary() {
   const [settings, works] = await Promise.all([getSettings(), getPublishedWorks()]);
   if (!settings.showFiction) notFound();
 
+  const volumes = works.length ? await Promise.all(works.map(toVolume)) : [placeholderVolume(settings.fictionIntro)];
+
+  const jsonLd = graph(
+    {
+      "@type": "CollectionPage",
+      "@id": IDS.library,
+      url: absoluteUrl("/fiction"),
+      name: TITLE,
+      description: DESCRIPTION,
+      inLanguage: "en",
+      author: AUTHOR,
+      isPartOf: { "@id": IDS.website },
+      ...(works.length
+        ? {
+            hasPart: works.map((w) => ({
+              "@type": "Book",
+              "@id": `${absoluteUrl(`/fiction/${w.slug}`)}#book`,
+              name: w.title,
+              url: absoluteUrl(`/fiction/${w.slug}`),
+              author: AUTHOR,
+            })),
+          }
+        : {}),
+    },
+    breadcrumbNode([
+      { name: "Home", path: "/" },
+      { name: "Fiction", path: "/fiction" },
+    ])
+  );
+
   return (
-    <div data-scene="network" data-scene-side="1" data-scene-opacity="0.75">
-      <PageHeader
-        eyebrow="Fiction · The library"
-        title="Elsewhere, I write fiction."
-        italic={["fiction"]}
-        lede={settings.fictionIntro}
-        image="/media/fiction-doorway.webp"
-        imageAlt="A figure in a lit doorway as pages drift through a rainy street"
-      />
-      <section className="mx-auto max-w-[1400px] px-5 pb-32 md:px-10">
-        {works.length === 0 ? (
-          <Reveal className="grid items-center gap-10 rounded-2xl border border-dashed border-[var(--line-strong)] p-8 md:grid-cols-[280px_1fr] md:p-12">
-            <WorkCover title="Untitled" cover={null} />
-            <div>
-              <p className="eyebrow">In the drafting room</p>
-              <p className="display mt-4 max-w-[18ch] text-5xl text-ink">The first chapters are being written.</p>
-              <p className="mt-4 max-w-[52ch] text-[15px] leading-relaxed text-muted">
-                Stories will appear here as they&apos;re finished, one chapter at a time. Follow along with{" "}
-                <Link href="/rss.xml" className="link-sweep text-ink-2">RSS</Link>.
-              </p>
-            </div>
-          </Reveal>
-        ) : (
-          <ul className="grid gap-x-8 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
-            {works.map((w, i) => (
-              <Reveal as="li" key={w.id} delay={(i % 3) * 0.08}>
-                <Link href={`/fiction/${w.slug}`} className="group block">
-                  <WorkCover title={w.title} cover={w.cover} />
-                  <p className="mt-6 font-mono text-[10.5px] uppercase tracking-[0.22em] text-muted">
-                    {w.kind}
-                    {w.genre ? ` · ${w.genre}` : ""} · {w.chapters.length} {w.chapters.length === 1 ? "chapter" : "chapters"}
-                  </p>
-                  <p className="display mt-2 text-4xl leading-tight text-ink transition-colors duration-500 group-hover:text-[color:var(--key)]">
-                    {w.title}
-                  </p>
-                  {w.tagline && <p className="mt-2 text-[15px] italic leading-relaxed text-muted">{w.tagline}</p>}
-                  <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.22em] text-faint">{w.progress}</p>
-                </Link>
-              </Reveal>
-            ))}
-          </ul>
-        )}
+    <div data-scene="network" data-scene-side="0" data-scene-opacity="0.3">
+      <JsonLd data={jsonLd} />
+      <header className="relative mx-auto max-w-[1400px] px-5 pt-[calc(var(--nav-h)+3.5rem)] text-center md:px-10 md:pt-[calc(var(--nav-h)+4rem)]">
+        <Reveal immediate>
+          <p className="eyebrow">Fiction · The library</p>
+        </Reveal>
+        <h1 className="display mx-auto mt-5 text-[clamp(2.9rem,6.4vw,6rem)] text-ink">
+          <TitleReveal text="And then there are the stories." italicWords={["stories."]} immediate />
+        </h1>
+        <Reveal immediate delay={0.15} className="lede mx-auto mt-6 max-w-[560px]">
+          {introWithoutTitle(settings.fictionIntro)}
+        </Reveal>
+      </header>
+
+      <section aria-label="The shelf" className="mx-auto max-w-[1400px] pb-28 pt-2 md:pb-36">
+        <Library volumes={volumes} />
+        <Reveal delay={0.2}>
+          <p className="mt-10 text-center font-mono text-[10px] uppercase tracking-[0.26em] text-faint">
+            {works.length ? "Take a book down to open it" : "The first book is still being written"}
+          </p>
+        </Reveal>
       </section>
     </div>
   );

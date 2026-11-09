@@ -51,7 +51,7 @@ export function Footer({ settings }: { settings: Settings }) {
       </div>
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 pb-8 font-mono text-[10.5px] uppercase tracking-[0.22em] text-faint md:px-10">
         <span>© {year} Sibi Kabilan</span>
-        <span>Shot on WebGL · Written by hand</span>
+        <span>Built and written by hand</span>
       </div>
     </footer>
   );

@@ -5,20 +5,38 @@
 
 export const SITE = {
   name: "Sibi Kabilan",
-  title: "Sibi Kabilan · Entrepreneur, engineer, writer",
+  /** The home page title: kept within about 60 characters so search results show it whole. */
+  title: "Sibi Kabilan · Co founder of SuprAgent, engineer and writer",
+  /** The home page snippet: about 150 characters. */
   description:
-    "Sibi Kabilan is a two time founder and engineer building SuprAgent, and a writer of essays and fiction. Over a decade of shipping software people rely on, from Oregon to Bengaluru.",
+    "Sibi Kabilan is an entrepreneur, engineer and writer in Bengaluru, India. He co founded SuprAgent to build Agentic UI, and writes essays and fiction.",
   url: "https://www.sibikabilan.com",
+  domain: "sibikabilan.com",
+  locale: "en_US",
+  keywords: [
+    "Sibi Kabilan",
+    "SuprAgent",
+    "Agentic UI",
+    "AI agents",
+    "entrepreneur",
+    "software engineer",
+    "writer",
+    "essays",
+    "fiction",
+    "Bengaluru",
+    "KayaDev AI",
+    "Oregon State University",
+  ],
 } as const;
 
-/** The prologue: a personal credo, played as subtitles over the threads scene. */
+/** The prologue: a personal credo, read as you scroll. */
 export const PROLOGUE = [
-  { line: "Every system I've built has had someone on the other end of it.", note: "PROLOGUE" },
-  { line: "An operator watching the highways on a wall of screens.", note: "SCENE 01 · THE OPERATOR" },
-  { line: "A customer stuck on a form they don't quite understand.", note: "SCENE 02 · THE CUSTOMER" },
-  { line: "A team betting their quarter on something that has to work.", note: "SCENE 03 · THE TEAM" },
-  { line: "I've learned to build for that person first.", note: "SCENE 04 · THE LESSON" },
-  { line: "Some of their stories I tell in code. The rest, I write down.", note: "SCENE 05 · THE OTHER HALF" },
+  { line: "Every system I've built has had someone on the other end of it." },
+  { line: "An operator watching the highways on a wall of screens." },
+  { line: "A customer stuck on a form they don't quite understand." },
+  { line: "A team betting their quarter on something that has to work." },
+  { line: "I've learned to build for that person first." },
+  { line: "Some of their stories I tell in code. The rest, I write down." },
 ];
 
 export const FACETS = [
@@ -27,7 +45,7 @@ export const FACETS = [
     verb: "Build",
     title: "Companies",
     body:
-      "Two so far. KayaDev AI brought computer vision to enterprise teams, and I ran it as CEO for three years. SuprAgent is the second: an AI agent that sells for financial institutions.",
+      "Two so far. KayaDev AI brought computer vision to enterprise teams, and I ran it as CEO for three years. SuprAgent is the second, and a bet on Agentic UI: interfaces an agent composes for each person, in the moment.",
     image: "/media/era-2025.webp",
     href: "#now",
     cta: "What I'm building",
@@ -56,12 +74,18 @@ export const FACETS = [
 
 export const NOW_WORK = {
   name: "SuprAgent",
-  line: "The AI agent that sells for banks, lenders, insurers and wealth firms.",
+  line: "Agentic UI: an interface an agent composes for one person at a time.",
   body:
-    "It does what your best relationship manager does, for every customer at once: it pitches, negotiates inside the limits the institution sets, collects the documents, takes the payment and closes. One continuous conversation across WhatsApp, a voice call in the customer's own language, and the app screen.",
-  steps: ["Pitch", "Negotiate", "Collect", "Pay", "Close"],
-  channels: ["WhatsApp", "Voice", "Agentic UI"],
+    "A static screen is a guess about what the average customer needs, frozen at design time. In an Agentic UI the screen is an output of reasoning. The agent observes what this person is trying to do, decides the next step, acts through the product's own components, and learns from every journey that finished and every one that didn't.",
+  verbs: [
+    { verb: "Observe", text: "Reads what it's allowed to read: what was said, tapped, and already known." },
+    { verb: "Decide", text: "Picks the next step against a goal and the rules your team wrote." },
+    { verb: "Act", text: "Renders it with your own components, fills what it knows, calls your systems." },
+    { verb: "Learn", text: "Every finished or abandoned journey makes the next one shorter." },
+  ],
+  not: "Not a chatbot in the corner. Not a copilot that suggests while the customer still does the work.",
   with: "Built with my co founder Nandini Muthuraman and the team at Biome.",
+  essay: { title: "Why I'm betting my second company on Agentic UI", href: "/blog/betting-my-second-company-on-agentic-ui" },
 };
 
 export interface ReelLogo {
@@ -69,80 +93,44 @@ export interface ReelLogo {
   label: string;
   /** Keep the logo's own colours instead of the white treatment. */
   color?: boolean;
-  /** Set the label in type instead of an image. */
+  /** Set the label in type instead of an image (no official file exists). */
   wordmark?: boolean;
-  /** Text after the mark, e.g. Samsung + "Care+". */
-  suffix?: string;
 }
 
-export interface ReelCredit {
-  label: string;
-  logos: ReelLogo[];
-  size: "lg" | "md";
-}
+/** What sits centre stage in an era: its marks, or a statement set large over the picture. */
+export type ReelLockup =
+  | { kind: "logos"; credit: string; logos: ReelLogo[] }
+  | { kind: "statement"; credit: string; lines: string[] };
 
 export interface ReelFrame {
+  key: string;
   years: string;
   place: string;
   title: string;
   body: string;
   line: string;
-  image: string;
-  alt: string;
-  credits: ReelCredit[];
-  overlay?: "blueprint";
+  /** Background picture; omitted where the mark itself is the picture. */
+  image?: string;
+  alt?: string;
+  lockup: ReelLockup;
+  /** A second, smaller row of marks under the title card. */
+  partners?: { credit: string; logos: ReelLogo[] };
 }
 
-const OSU: ReelLogo = { src: "/logos/oregon-state.svg", label: "Oregon State University" };
-
+/** Newest first: where I am, then the long way back to where I started. */
 export const REEL: ReelFrame[] = [
   {
-    years: "2013 to 2017",
-    place: "Corvallis, Oregon",
-    title: "Where I learned to build.",
-    body:
-      "Oregon State gave me a campus and, unusually early, real users. Traffic operations software for the state of Oregon, and projects for the USDA, the California Board of Education and HP. Operators, analysts, civil servants: people who just needed the thing to work.",
-    line: "Software people rely on doesn't get a maintenance window.",
-    image: "/media/era-osu.webp",
-    alt: "A silhouette on the lawn in front of the Memorial Union at Oregon State University",
-    credits: [
-      { label: "Filmed at", size: "lg", logos: [OSU] },
-      {
-        label: "In association with",
-        size: "md",
-        logos: [
-          { src: "/logos/odot.svg", label: "Oregon Department of Transportation" },
-          { src: "/logos/usda.svg", label: "USDA" },
-          { label: "California Board of Education", wordmark: true },
-          { src: "/logos/hp.svg", label: "HP" },
-        ],
-      },
-    ],
-  },
-  {
-    years: "2017 to 2018",
-    place: "Independent",
-    title: "Drawing systems for other people to run.",
-    body:
-      "Two years as an independent architect across a dozen projects in machine learning, content distribution and analytics. I started judging a design by how quiet things were after I handed it over.",
-    line: "Design for whoever is on call when you're gone.",
-    image: "/media/era-2017.webp",
-    alt: "System diagrams on a glass wall above a city at dusk",
-    overlay: "blueprint",
-    credits: [{ label: "An independent production", size: "lg", logos: [{ label: "Five clients · Twelve systems", wordmark: true }] }],
-  },
-  {
-    years: "2018 to 2021",
+    key: "supragent",
+    years: "2025 to now",
     place: "Bengaluru",
-    title: "The first company.",
+    title: "The bet on Agentic UI.",
     body:
-      "KayaDev AI taught cameras to understand what they were seeing, for enterprise teams who needed it to work on a Monday morning, not in a demo. Three years as CEO taught me the difference between a model and a product.",
-    line: "Nobody buys AI. They buy an outcome they can trust.",
-    image: "/media/era-2018.webp",
-    alt: "A street scene projected on a wall with computer vision tracking boxes",
-    credits: [{ label: "A production of", size: "lg", logos: [{ label: "KayaDev AI", wordmark: true }] }],
+      "A static screen is a guess about what the average customer needs, frozen at design time. SuprAgent bets on the opposite: an agent that reads the person in front of it, composes the next step from the product's own components, and works inside rules the institution writes. Built with my co founder Nandini Muthuraman and the team at Biome.",
+    line: "I write the agent's code, and I answer for what it does.",
+    lockup: { kind: "logos", credit: "What I'm building now", logos: [{ src: "/logos/supragent.webp", label: "SuprAgent", color: true }] },
   },
   {
+    key: "servify",
     years: "2022 to 2024",
     place: "Servify · India and North America",
     title: "Real money, real people.",
@@ -151,27 +139,59 @@ export const REEL: ReelFrame[] = [
     line: "Decide what it must never do before what it should do.",
     image: "/media/era-2022.webp",
     alt: "Rows of glowing phones beneath streams of light like transactions",
-    credits: [
-      {
-        label: "Presented for",
-        size: "lg",
-        logos: [
-          { src: "/logos/samsung.svg", label: "Samsung Care+", suffix: "Care+" },
-          { src: "/logos/apple.svg", label: "AppleCare+", suffix: "AppleCare+" },
-        ],
-      },
-    ],
+    lockup: {
+      kind: "logos",
+      credit: "Looking after customers of",
+      logos: [
+        { src: "/logos/samsung-care-plus.webp", label: "Samsung Care+", color: true },
+        { src: "/logos/applecare-plus.webp", label: "AppleCare+", color: true },
+      ],
+    },
   },
   {
-    years: "2025 to now",
+    key: "kayadev",
+    years: "2018 to 2021",
     place: "Bengaluru",
-    title: "Founder, again.",
+    title: "The first company.",
     body:
-      "Everything above, pointed at one problem: the moment a customer goes quiet. An agent that talks to people the way your best person would, built with my co founder Nandini Muthuraman and the team at Biome.",
-    line: "I write the agent's code, and I answer for what it does.",
-    image: "/media/era-2025.webp",
-    alt: "A ribbon of light flowing from a chat bubble through a voice wave into a phone",
-    credits: [{ label: "A SuprAgent original", size: "lg", logos: [{ src: "/logos/supragent.webp", label: "SuprAgent", color: true }] }],
+      "KayaDev AI taught cameras to understand what they were seeing, for enterprise teams who needed it to work on a Monday morning, not in a demo. Three years as CEO taught me the difference between a model and a product.",
+    line: "Nobody buys AI. They buy an outcome they can trust.",
+    image: "/media/era-2018.webp",
+    alt: "A street scene projected on a wall with computer vision tracking boxes",
+    lockup: { kind: "logos", credit: "My first company", logos: [{ src: "/logos/kayadev.webp", label: "KayaDev AI", color: true }] },
+  },
+  {
+    key: "architect",
+    years: "2017 to 2018",
+    place: "Independent",
+    title: "Drawing systems for other people to run.",
+    body:
+      "Solution architecture across machine learning, content distribution and analytics. I started judging a design by how quiet things were after I handed it over.",
+    line: "Design for whoever is on call when you're gone.",
+    image: "/media/era-2017.webp",
+    alt: "System diagrams on a glass wall above a city at dusk",
+    lockup: { kind: "statement", credit: "On my own", lines: ["Five clients.", "Two in the Fortune 500.", "Twelve systems."] },
+  },
+  {
+    key: "osu",
+    years: "2013 to 2017",
+    place: "Corvallis, Oregon",
+    title: "Where I learned to build.",
+    body:
+      "My story began at Oregon State. It gave me a campus and, unusually early, real users: traffic operations software for the state of Oregon, and projects for the USDA, the California Board of Education and HP. Operators, analysts, civil servants: people who just needed the thing to work.",
+    line: "Software people rely on doesn't get a maintenance window.",
+    image: "/media/era-osu.webp",
+    alt: "A silhouette on the lawn in front of the Memorial Union at Oregon State University",
+    lockup: { kind: "logos", credit: "Where my story began", logos: [{ src: "/logos/oregon-state.svg", label: "Oregon State University" }] },
+    partners: {
+      credit: "My first real users",
+      logos: [
+        { src: "/logos/odot.svg", label: "Oregon Department of Transportation" },
+        { src: "/logos/usda.svg", label: "USDA" },
+        { label: "California Board of Education", wordmark: true },
+        { src: "/logos/hp.svg", label: "HP" },
+      ],
+    },
   },
 ];
 

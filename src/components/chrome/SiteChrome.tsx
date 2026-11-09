@@ -4,10 +4,15 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Lenis from "lenis";
-import { initAtmosphere, sceneStore, useAtmosphere } from "@/lib/stores";
+import { initAtmosphere, sceneStore, useAtmosphere, wheelGates } from "@/lib/stores";
 import type { AtmosphereId } from "@/lib/atmosphere";
 
 const ParticleScene = dynamic(() => import("@/components/scene/ParticleScene"), { ssr: false });
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+  cancelIdleCallback?: (id: number) => void;
+};
 
 function hasWebGL() {
   try {
@@ -79,7 +84,15 @@ function useSmoothScroll(enabled: boolean) {
   const pathname = usePathname();
   useEffect(() => {
     if (!enabled) return;
-    const lenis = new Lenis({ duration: 1.25, smoothWheel: true, anchors: { offset: -40 } });
+    const lenis = new Lenis({
+      duration: 1.25,
+      smoothWheel: true,
+      anchors: { offset: -40 },
+      virtualScroll: (data) => {
+        for (const gate of wheelGates) if (!gate(data)) return false;
+        return true;
+      },
+    });
     let raf = 0;
     const loop = (time: number) => {
       lenis.raf(time);
@@ -107,15 +120,39 @@ function useSpotlight(enabled: boolean) {
     if (!enabled || window.matchMedia("(pointer: coarse)").matches) return;
     const root = document.documentElement;
     let raf = 0;
+    let x = -1;
+    let y = -1;
+    // Sections marked data-spotlight="off" (the smoke, the photographs, the book, the hallway)
+    // already carry their own light; the cursor glow fades out over them.
+    const check = () => {
+      if (x < 0) return;
+      const el = document.elementFromPoint(x, y);
+      const off = !!el?.closest('[data-spotlight="off"]');
+      if ((root.dataset.spot === "off") !== off) root.dataset.spot = off ? "off" : "on";
+    };
     const onMove = (e: PointerEvent) => {
+      x = e.clientX;
+      y = e.clientY;
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        root.style.setProperty("--mx", `${e.clientX}px`);
-        root.style.setProperty("--my", `${e.clientY}px`);
+        root.style.setProperty("--mx", `${x}px`);
+        root.style.setProperty("--my", `${y}px`);
+        check();
       });
     };
+    let scrollRaf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(scrollRaf);
+      scrollRaf = requestAnimationFrame(check);
+    };
     window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(scrollRaf);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [enabled]);
 }
 
@@ -125,10 +162,33 @@ export function SiteChrome({ defaultAtmosphere }: { defaultAtmosphere: Atmospher
 
   useEffect(() => {
     initAtmosphere(defaultAtmosphere);
-    // Detection must run in the browser; it cannot be known during SSR.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWebgl(hasWebGL());
   }, [defaultAtmosphere]);
+
+  // The particle field is atmosphere, not content. It waits for the page to
+  // finish loading and the browser to go idle, so three.js never competes with
+  // the first paint or hydration; it fades in on its own once mounted.
+  useEffect(() => {
+    let cancelled = false;
+    let idle = 0;
+    let timer = 0;
+    const w = window as IdleWindow;
+    // Detection must run in the browser; it cannot be known during SSR.
+    const mount = () => {
+      if (!cancelled) setWebgl(hasWebGL());
+    };
+    const start = () => {
+      if (w.requestIdleCallback) idle = w.requestIdleCallback(mount, { timeout: 2000 });
+      else timer = window.setTimeout(mount, 200);
+    };
+    if (document.readyState === "complete") start();
+    else window.addEventListener("load", start, { once: true });
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", start);
+      if (idle) w.cancelIdleCallback?.(idle);
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   const cinematic = ready && motion === "cinematic";
   useSceneDirector();

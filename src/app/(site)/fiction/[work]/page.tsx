@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublishedWork, getPublishedWorks } from "@/lib/cms/queries";
+import { getPublishedWork, getPublishedWorks, type PublicWork } from "@/lib/cms/queries";
 import { markdownToHtml } from "@/lib/markdown";
 import { formatDate, spellNumber } from "@/lib/utils";
 import { Reveal } from "@/components/ui/Reveal";
-import { WorkCover } from "@/components/fiction/WorkCover";
+import { Book } from "@/components/fiction/Book";
 import { ContinueReading } from "@/components/fiction/ContinueReading";
+import bookStyles from "@/components/fiction/book.module.css";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { AUTHOR, absoluteUrl, brandTitle, breadcrumbNode, graph, pageMeta, plainText, shareImageNode, snippet } from "@/lib/seo";
+import { SITE } from "@/lib/site";
 
 type Props = { params: Promise<{ work: string }> };
 
@@ -15,16 +19,30 @@ export async function generateStaticParams() {
   return works.map((w) => ({ work: w.slug }));
 }
 
+const sentence = (s: string) => (s && !/[.!?…]["”’)]*$/.test(s.trim()) ? `${s.trim()}.` : s.trim());
+
+function workDescription(work: PublicWork) {
+  const about = [sentence(work.tagline), plainText(work.synopsis)].filter(Boolean).join(" ");
+  const tail = `A ${work.kind} by ${SITE.name}, free to read.`;
+  return snippet(about || `A ${work.kind}${work.genre ? ` (${work.genre})` : ""} by ${SITE.name}, published a chapter at a time.`, tail);
+}
+
+const lastUpdate = (work: PublicWork) =>
+  [work.updatedAt, ...work.chapters.map((c) => c.updatedAt)].sort().at(-1) ?? work.updatedAt;
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { work: slug } = await params;
   const work = await getPublishedWork(slug);
-  if (!work) return { title: "Not found" };
-  return {
-    title: work.title,
-    description: work.tagline || `A ${work.kind} by Sibi Kabilan.`,
-    alternates: { canonical: `/fiction/${work.slug}` },
-    openGraph: { title: work.title, description: work.tagline, images: work.cover ? [{ url: work.cover }] : undefined },
-  };
+  if (!work) return { title: "Page not found", robots: { index: false } };
+  return pageMeta({
+    title: brandTitle(work.title, `A ${work.kind} by ${SITE.name}`),
+    socialTitle: work.title,
+    description: workDescription(work),
+    path: `/fiction/${work.slug}`,
+    type: "book",
+    image: work.cover ? { url: work.cover, alt: `The cover of ${work.title}` } : null,
+    article: { tags: work.genre ? [work.genre] : undefined },
+  });
 }
 
 export default async function WorkPage({ params }: Props) {
@@ -35,19 +53,73 @@ export default async function WorkPage({ params }: Props) {
   const words = work.chapters.reduce((n, c) => n + c.wordCount, 0);
   const first = work.chapters[0];
 
+  const url = absoluteUrl(`/fiction/${work.slug}`);
+  const jsonLd = graph(
+    {
+      "@type": "Book",
+      "@id": `${url}#book`,
+      name: work.title,
+      url,
+      mainEntityOfPage: { "@type": "WebPage", "@id": url },
+      description: workDescription(work),
+      ...(work.tagline ? { alternativeHeadline: work.tagline } : {}),
+      ...(work.genre ? { genre: work.genre } : {}),
+      bookFormat: "https://schema.org/EBook",
+      inLanguage: "en",
+      image: shareImageNode(work.cover ? { url: work.cover, alt: `The cover of ${work.title}` } : null),
+      author: AUTHOR,
+      publisher: AUTHOR,
+      datePublished: work.publishedAt ?? undefined,
+      dateModified: lastUpdate(work),
+      creativeWorkStatus: work.progress,
+      ...(words ? { wordCount: words } : {}),
+      isAccessibleForFree: true,
+      hasPart: work.chapters.map((c, i) => ({
+        "@type": "Chapter",
+        "@id": `${url}/${c.slug}#chapter`,
+        name: c.title,
+        url: `${url}/${c.slug}`,
+        position: i + 1,
+      })),
+    },
+    breadcrumbNode([
+      { name: "Home", path: "/" },
+      { name: "Fiction", path: "/fiction" },
+      { name: work.title, path: `/fiction/${work.slug}` },
+    ])
+  );
+
   return (
     <div data-scene="network" data-scene-side="-1" data-scene-opacity="0.35">
+      <JsonLd data={jsonLd} />
       <section className="mx-auto grid max-w-[1400px] gap-12 px-5 pb-20 pt-[calc(var(--nav-h)+4rem)] md:grid-cols-[minmax(240px,380px)_1fr] md:gap-20 md:px-10 md:pt-[calc(var(--nav-h)+6rem)]">
-        <Reveal>
-          <WorkCover title={work.title} cover={work.cover} />
+        <Reveal immediate>
+          <div className={`${bookStyles.standingWrap} relative flex justify-center pb-10 pt-4`}>
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -inset-x-6 -top-10 bottom-0 bg-[radial-gradient(55%_55%_at_50%_45%,color-mix(in_oklab,var(--key)_9%,transparent),transparent_75%)]"
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute bottom-6 left-1/2 h-7 w-[min(260px,70%)] -translate-x-1/2 rounded-[50%] bg-black/80 blur-xl"
+            />
+            <Book
+              slug={work.slug}
+              title={work.title}
+              cover={work.cover}
+              kind={work.kind}
+              width="clamp(200px, 20vw, 290px)"
+              className={bookStyles.standing}
+            />
+          </div>
         </Reveal>
         <div className="md:pt-6">
-          <Reveal>
+          <Reveal immediate>
             <Link href="/fiction" className="eyebrow link-sweep">
               ← The library
             </Link>
           </Reveal>
-          <Reveal delay={0.05}>
+          <Reveal immediate delay={0.05}>
             <p className="mt-8 font-mono text-[10.5px] uppercase tracking-[0.24em] text-muted">
               A {work.kind}
               {work.genre ? ` · ${work.genre}` : ""} · {work.progress}
@@ -56,11 +128,11 @@ export default async function WorkPage({ params }: Props) {
             {work.tagline && <p className="mt-4 font-display text-2xl italic text-ink-2">{work.tagline}</p>}
           </Reveal>
           {synopsis && (
-            <Reveal delay={0.1}>
+            <Reveal immediate delay={0.1}>
               <div className="prose-cine mt-8 max-w-[62ch] text-[1.08rem]" dangerouslySetInnerHTML={{ __html: synopsis }} />
             </Reveal>
           )}
-          <Reveal delay={0.15} className="mt-10 flex flex-wrap items-center gap-4">
+          <Reveal immediate delay={0.15} className="mt-10 flex flex-wrap items-center gap-4">
             {first ? (
               <>
                 <ContinueReading workSlug={work.slug} chapters={work.chapters.map((c) => ({ slug: c.slug, title: c.title }))} />

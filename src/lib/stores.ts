@@ -103,6 +103,8 @@ export interface SceneState {
   mode: NetworkMode;
   /** Prologue beat, which choreographs the network. */
   beat: number;
+  /** 0 to 1 as the hero scrolls away: the halo breaks into dust that drifts down into the prologue's smoke. */
+  disperse: number;
 }
 
 export const sceneStore = createStore<SceneState>({
@@ -113,8 +115,29 @@ export const sceneStore = createStore<SceneState>({
   variant: 0,
   mode: "drift",
   beat: 0,
+  disperse: 0,
 });
 
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
   (window as unknown as Record<string, unknown>).__sk = { sceneStore, atmosphereStore };
+}
+
+/**
+ * Wheel gates let a pinned, stepped section take over wheel and trackpad
+ * input while the page is inside it. Smooth scrolling asks every gate before
+ * moving; a gate that returns false has handled the event itself.
+ */
+export type WheelGate = (data: { deltaY: number; event: WheelEvent | TouchEvent }) => boolean;
+export const wheelGates = new Set<WheelGate>();
+
+/* ───────── the talking portrait ───────── */
+
+/**
+ * The talking portrait's cue: the word being said right now (-1: none), the
+ * furthest word said so far, and whether the footage is actually playing.
+ */
+export const portraitStore = createStore<{ word: number; said: number; live: boolean }>({ word: -1, said: -1, live: false });
+
+export function usePortraitCue() {
+  return useSyncExternalStore(portraitStore.subscribe, portraitStore.get, portraitStore.get);
 }

@@ -6,7 +6,6 @@ import * as THREE from "three";
 import { atmosphereStore, sceneStore } from "@/lib/stores";
 import { ATMOSPHERES } from "@/lib/atmosphere";
 import { buildTargets, HALOS, ROLLING, SPINNING, type TargetKey } from "./targets";
-import { Network } from "./Network";
 
 /* ───────────────────────── shaders ───────────────────────── */
 
@@ -19,6 +18,9 @@ const particleVertex = /* glsl */ `
   uniform float uRoll;
   uniform float uMotion;
   uniform vec3 uMouse;
+  uniform float uDisperse;
+  uniform vec2 uView;
+  uniform vec3 uCenter;
   attribute vec3 aFrom;
   attribute vec3 aTo;
   attribute float aFromB;
@@ -61,12 +63,37 @@ const particleVertex = /* glsl */ `
     pos.xy += normalize(d + 0.0001) * push * 0.5;
     pos.z += push * 0.7;
 
-    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+    // Leaving the hero: each grain breaks away, sinks like dust, then spreads to
+    // where the prologue's smoke is gathering and fades into it.
+    vec4 world = modelMatrix * vec4(pos, 1.0);
+    float dd = clamp((uDisperse - aRand * 0.3) / 0.7, 0.0, 1.0);
+    float de = dd * dd * (3.0 - 2.0 * dd);
+    float arc = sin(de * 3.14159);
+    if (dd > 0.0) {
+      // Advect through one smooth flow field with gravity, so neighbouring grains
+      // travel together in curling streams, the way poured smoke or dust in water does.
+      vec2 p = world.xy;
+      for (int i = 0; i < 4; i++) {
+        vec2 f = vec2(
+          sin(p.y * 1.4 + uTime * 0.5) + 0.6 * sin(p.y * 2.9 - uTime * 0.35 + p.x * 0.7),
+          0.5 * cos(p.x * 1.2 - uTime * 0.45)
+        );
+        p += (f * 0.35 + vec2(0.0, -0.9)) * de * 0.6;
+      }
+      vec2 h = vec2(fract(aRand * 91.7), fract(aRand * 53.3 + 0.37));
+      vec2 settle = vec2((h.x - 0.5) * uView.x * 1.1, (h.y - 0.6) * uView.y);
+      vec2 burst = normalize(world.xy - uCenter.xy + vec2(0.0001)) * 0.7 * sin(min(de, 0.5) * 3.14159);
+      world.xy = mix(p, settle, smoothstep(0.55, 1.0, de)) + burst;
+      world.z += (fract(aRand * 17.1) - 0.5) * de;
+    }
+
+    vec4 mv = viewMatrix * world;
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = uSize * aSize * uPixelRatio * (1.0 / -mv.z) * (1.0 + push * 0.9);
+    gl_PointSize = uSize * aSize * uPixelRatio * (1.0 / -mv.z) * (1.0 + push * 0.9) * (1.0 + de * 2.6);
 
     vLight = clamp(0.5 + pos.x * 0.24 + pos.y * 0.07 + pos.z * 0.15, 0.0, 1.0);
     vAlpha = (0.45 + 0.55 * fract(aRand * 7.31)) * mix(aFromB, aToB, e) * (1.0 + push * 1.4);
+    vAlpha *= (1.0 - 0.35 * arc) * (1.0 - smoothstep(0.6, 1.0, dd));
     vRand = aRand;
   }
 `;
@@ -148,6 +175,9 @@ function Stage({ count }: { count: number }) {
           uKey: { value: new THREE.Color(initial.key) },
           uRim: { value: new THREE.Color(initial.rim) },
           uOpacity: { value: 0 },
+          uDisperse: { value: 0 },
+          uView: { value: new THREE.Vector2(10, 6) },
+          uCenter: { value: new THREE.Vector3() },
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,7 +276,10 @@ function Stage({ count }: { count: number }) {
       follow = 9;
     }
     const g = group.current;
-    if (g) {
+    // Mid-dispersal with the portrait gone, the halo holds its place so the grains
+    // already in flight don't jump.
+    const dispersing = !calm && scene.disperse > 0.001;
+    if (g && !(dispersing && !scene.anchor)) {
       g.position.x += (xTarget - g.position.x) * Math.min(1, dt * follow);
       g.position.y += (yTarget - g.position.y) * Math.min(1, dt * follow);
       const s = g.scale.x + (scale - g.scale.x) * Math.min(1, dt * (scene.anchor ? 9 : 2));
@@ -283,7 +316,11 @@ function Stage({ count }: { count: number }) {
     u.uSpin.value += dt * 0.11 * m.spinSpeed;
     u.uRoll.value += dt * 0.12 * m.rollSpeed;
     u.uMotion.value += ((calm ? 0.15 : 1) - u.uMotion.value) * Math.min(1, dt * 2);
-    const haloOpacity = scene.target === "halo" ? 1 : 0;
+    const flowing = dispersing && scene.disperse < 0.999;
+    const haloOpacity = scene.target === "halo" || flowing ? 1 : 0;
+    u.uDisperse.value = calm ? 0 : scene.disperse;
+    u.uView.value.set(viewport.width, viewport.height);
+    if (g) u.uCenter.value.copy(g.position);
     u.uOpacity.value += (haloOpacity - u.uOpacity.value) * Math.min(1, dt * 2.2);
     u.uTime.value = t;
     u.uProgress.value = m.progress;
@@ -298,7 +335,6 @@ function Stage({ count }: { count: number }) {
 
   return (
     <>
-      <Network />
       <group ref={group}>
         <points geometry={geometry} material={material} />
       </group>
