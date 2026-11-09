@@ -24,11 +24,11 @@ function summary(settings: Settings): string {
 
   return `# ${SITE.name}
 
-> ${SITE.name} is an entrepreneur, engineer and writer based in Bengaluru, Karnataka, India. He is the co founder of SuprAgent (${settings.companyUrl}), which builds Agentic UI: interfaces an AI agent composes for each person, in the moment. He also writes essays and fiction, published at ${SITE.url}.
+> ${SITE.name} is an entrepreneur, engineer and writer based in Bengaluru, Karnataka, India. He is the founder of SuprAgent (${settings.companyUrl}), which builds Agentic UI: interfaces an AI agent composes for each person, in the moment. He also writes essays and fiction, published at ${SITE.url}.
 
 Key facts:
 
-- Now: co founder of SuprAgent, building Agentic UI with his co founder Nandini Muthuraman.
+- Now: founder of SuprAgent, building Agentic UI.
 - 2022 to 2024: Servify. Device protection programs for Samsung Care+ and AppleCare+, a transactional risk and fraud engine, and generative AI in production through chat, IVR and voice.
 - 2018 to 2021: co founded KayaDev AI and ran it as CEO. Computer vision and analytics for enterprise teams.
 - 2017 to 2018: independent AI and solutions architect.
@@ -49,7 +49,7 @@ export async function buildLlmsTxt(): Promise<string> {
   sections.push(`## About
 
 - [${SITE.name}, home page](${SITE.url}): Who he is, what he is building, the long way here from Oregon to Bengaluru, and how to get in touch.
-- [SuprAgent](${settings.companyUrl}): The company he co founded, building Agentic UI.`);
+- [SuprAgent](${settings.companyUrl}): The company he founded, building Agentic UI.`);
 
   if (settings.showWriting && posts.length) {
     sections.push(

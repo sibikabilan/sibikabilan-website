@@ -453,6 +453,17 @@
   text-align: center;
 }
 
+/* On a phone two books share each shelf: tighter gaps so the pair fits the width. */
+@media (max-width: 639px) {
+  .shelfRow {
+    gap: 16px;
+    padding-inline: 12px;
+  }
+  .label {
+    width: calc(var(--bw) + 16px);
+  }
+}
+
 /* The plank: a lit top surface and a darker front edge. */
 .plank {
   position: absolute;

@@ -10,7 +10,7 @@ import { SITE } from "@/lib/site";
 
 const TITLE = "Writing: essays on Agentic UI and AI agents";
 const DESCRIPTION =
-  "Essays by Sibi Kabilan, co founder of SuprAgent, on Agentic UI, putting AI agents into production, and building companies and products people rely on.";
+  "Essays by Sibi Kabilan, founder of SuprAgent, on Agentic UI, putting AI agents into production, and building companies and products people rely on.";
 
 export const metadata = pageMeta({
   title: `${TITLE} · ${SITE.name}`,

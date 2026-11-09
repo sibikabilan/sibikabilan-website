@@ -6,10 +6,10 @@
 export const SITE = {
   name: "Sibi Kabilan",
   /** The home page title: kept within about 60 characters so search results show it whole. */
-  title: "Sibi Kabilan · Co founder of SuprAgent, engineer and writer",
+  title: "Sibi Kabilan · Founder of SuprAgent, engineer and writer",
   /** The home page snippet: about 150 characters. */
   description:
-    "Sibi Kabilan is an entrepreneur, engineer and writer in Bengaluru, India. He co founded SuprAgent to build Agentic UI, and writes essays and fiction.",
+    "Sibi Kabilan is an entrepreneur, engineer and writer in Bengaluru, India. He founded SuprAgent to build Agentic UI, and writes essays and fiction.",
   url: "https://www.sibikabilan.com",
   domain: "sibikabilan.com",
   locale: "en_US",
@@ -84,7 +84,7 @@ export const NOW_WORK = {
     { verb: "Learn", text: "Every finished or abandoned journey makes the next one shorter." },
   ],
   not: "Not a chatbot in the corner. Not a copilot that suggests while the customer still does the work.",
-  with: "Built with my co founder Nandini Muthuraman and the team at Biome.",
+  with: "Built with the team at Biome.",
   essay: { title: "Why I'm betting my second company on Agentic UI", href: "/blog/betting-my-second-company-on-agentic-ui" },
 };
 
@@ -125,7 +125,7 @@ export const REEL: ReelFrame[] = [
     place: "Bengaluru",
     title: "The bet on Agentic UI.",
     body:
-      "A static screen is a guess about what the average customer needs, frozen at design time. SuprAgent bets on the opposite: an agent that reads the person in front of it, composes the next step from the product's own components, and works inside rules the institution writes. Built with my co founder Nandini Muthuraman and the team at Biome.",
+      "A static screen is a guess about what the average customer needs, frozen at design time. SuprAgent bets on the opposite: an agent that reads the person in front of it, composes the next step from the product's own components, and works inside rules the institution writes. Built with the team at Biome.",
     line: "I write the agent's code, and I answer for what it does.",
     lockup: { kind: "logos", credit: "What I'm building now", logos: [{ src: "/logos/supragent.webp", label: "SuprAgent", color: true }] },
   },

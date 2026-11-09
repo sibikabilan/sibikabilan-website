@@ -19,7 +19,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showFiction: true,
   writingIntro: "Essays on building companies, agents and interfaces, and the lessons that only show up after launch.",
   fictionIntro: "Some of my ideas were never going to be software. They end up here instead, one chapter at a time.",
-  bio: `I studied computer science at Oregon State University and shipped my first production software there, for the Oregon Department of Transportation. Since then I've been an independent AI architect, co founded and ran KayaDev AI as CEO, looked after risk and AI for device protection programs at Servify, and now I'm building SuprAgent with my co founder Nandini Muthuraman.
+  bio: `I studied computer science at Oregon State University and shipped my first production software there, for the Oregon Department of Transportation. Since then I've been an independent AI architect, co founded and ran KayaDev AI as CEO, looked after risk and AI for device protection programs at Servify, and now I'm building SuprAgent, the company I founded.
 
 The thread through all of it is software that holds up in front of real people.`,
   nowList: `Building: SuprAgent, and the case for Agentic UI
@@ -123,6 +123,9 @@ const FIRST_STARTERS = ["customers-dont-say-no-they-go-quiet", "kill-the-static-
 const LEGACY_DEFAULTS: Partial<Record<keyof Settings, string[]>> = {
   fictionIntro: ["Elsewhere, I write fiction. This is where the stories live, a chapter at a time."],
   bio: [
+    `I studied computer science at Oregon State University and shipped my first production software there, for the Oregon Department of Transportation. Since then I've been an independent AI architect, co founded and ran KayaDev AI as CEO, looked after risk and AI for device protection programs at Servify, and now I'm building SuprAgent with my co founder Nandini Muthuraman.
+
+The thread through all of it is software that holds up in front of real people.`,
     `I studied computer science at Oregon State University and shipped my first production software there, for the Oregon Department of Transportation. Since then I've been an independent AI architect, co founded and ran KayaDev AI as CEO, owned risk and AI for global device protection programs at Servify, and now I'm building SuprAgent with my co founder Nandini Muthuraman.
 
 The thread through all of it is software that holds up in front of real people. The other thread is stories. I write fiction, and this site is where I share it alongside everything else.`,

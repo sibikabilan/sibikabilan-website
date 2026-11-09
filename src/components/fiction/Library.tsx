@@ -7,6 +7,7 @@ import { Book, bookHeightScale } from "./Book";
 import { useCalm } from "./useCalm";
 import { capitalize, chapterCount, type Volume } from "./volume";
 import { cx } from "@/lib/utils";
+import { useMedia } from "@/lib/useMedia";
 import s from "./book.module.css";
 
 type Rect = { left: number; top: number; width: number; height: number };
@@ -17,13 +18,15 @@ const loadOpenBook = () => import("./OpenBook");
 const OpenBook = dynamic(() => loadOpenBook().then((m) => m.OpenBook), { ssr: false });
 
 const SHELF_WIDTH = "clamp(124px, 14vw, 196px)";
-/** Books per shelf: more than this and the case gains a shelf instead of scrolling sideways. */
-const PER_SHELF = 3;
+/** On a phone two books share a shelf, sized so the pair (and their gap) fill the width. */
+const PHONE_WIDTH = "min(160px, calc((100vw - 92px) / 2))";
+const PHONE = "(max-width: 639px)";
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-function shelves<T>(items: T[]): T[][] {
+/** Books per shelf: more than this and the case gains a shelf instead of scrolling sideways. */
+function shelves<T>(items: T[], perShelf: number): T[][] {
   const rows: T[][] = [];
-  for (let i = 0; i < items.length; i += PER_SHELF) rows.push(items.slice(i, i + PER_SHELF));
+  for (let i = 0; i < items.length; i += perShelf) rows.push(items.slice(i, i + perShelf));
   return rows;
 }
 
@@ -39,6 +42,9 @@ function rectOf(el: Element | undefined | null): Rect | null {
  */
 export function Library({ volumes }: { volumes: Volume[] }) {
   const calm = useCalm();
+  const phone = useMedia(PHONE);
+  const perShelf = phone ? 2 : 3;
+  const bookWidth = phone ? PHONE_WIDTH : SHELF_WIDTH;
   const slots = useRef(new Map<string, HTMLDivElement>());
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const [active, setActive] = useState<{ volume: Volume; origin: Rect } | null>(null);
@@ -68,12 +74,12 @@ export function Library({ volumes }: { volumes: Volume[] }) {
 
   return (
     <div className={cx(s.shelf, s.shelfRoom)} data-calm={calm ? "" : undefined}>
-      {shelves(volumes).map((row, r, all) => (
+      {shelves(volumes, perShelf).map((row, r, all) => (
         <div key={r} className="relative">
           <div className={s.shelfScroller}>
             <ul className={s.shelfRow} aria-label={all.length > 1 ? `Shelf ${r + 1} of ${all.length}` : "Books on the shelf"}>
               {row.map((v, j) => {
-                const i = r * PER_SHELF + j;
+                const i = r * perShelf + j;
                 const hidden = active?.volume.slug === v.slug;
                 const meta = v.placeholder
                   ? "In the drafting room"
@@ -82,7 +88,7 @@ export function Library({ volumes }: { volumes: Volume[] }) {
                   <motion.li
                     key={v.slug}
                     className={s.shelfItem}
-                    style={{ "--bw": SHELF_WIDTH } as React.CSSProperties}
+                    style={{ "--bw": bookWidth } as React.CSSProperties}
                     initial={{ opacity: 0, y: 28 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "0px 0px -10% 0px" }}
@@ -114,13 +120,13 @@ export function Library({ volumes }: { volumes: Volume[] }) {
                           title={v.title}
                           cover={v.cover}
                           kind={v.kind}
-                          width={SHELF_WIDTH}
+                          width={bookWidth}
                           className={s.pose}
                         />
                       </div>
                     </button>
                     <div className={s.label} aria-hidden>
-                      <p className="display truncate text-[1.3rem] leading-tight text-ink">{v.title}</p>
+                      <p className="display line-clamp-2 text-[1.05rem] leading-tight text-ink sm:truncate sm:text-[1.3rem]">{v.title}</p>
                       <p className="mt-1.5 line-clamp-2 font-mono text-[9.5px] uppercase leading-[1.6] tracking-[0.2em] text-muted">{meta}</p>
                     </div>
                   </motion.li>

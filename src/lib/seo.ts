@@ -192,7 +192,7 @@ export function personNode(settings: Settings): Node {
     url: SITE.url,
     image: imageObject(PHOTO, SITE.name),
     description: SITE.description,
-    jobTitle: "Co founder",
+    jobTitle: "Founder",
     hasOccupation: [
       { "@type": "Occupation", name: "Entrepreneur" },
       { "@type": "Occupation", name: "Engineer" },
@@ -249,7 +249,7 @@ function organizationNodes(settings: Settings): Node[] {
       url: settings.companyUrl,
       logo: imageObject({ url: "/logos/supragent.webp", width: 500, height: 500 }),
       description: AGENTIC_UI,
-      founder: [{ "@id": IDS.person }, { "@type": "Person", name: "Nandini Muthuraman" }],
+      founder: { "@id": IDS.person },
       location: { "@type": "Place", address: BENGALURU },
     },
     {

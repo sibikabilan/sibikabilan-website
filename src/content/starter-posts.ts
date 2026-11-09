@@ -126,7 +126,7 @@ I've built software for a state transportation agency, enterprise AI as a founde
 
 Agentic UI is my attempt to close that gap without loosening anything that matters. The rules get stricter, not softer. The brand stays intact. The customer does less, and the institution can still see and check every step.
 
-My co founder Nandini Muthuraman and I are building SuprAgent around that idea in Bengaluru, one journey at a time. It's my second company, and the first where every part of my career seems to point at the same problem.
+I'm building SuprAgent around that idea in Bengaluru, one journey at a time. It's my second company, and the first where every part of my career seems to point at the same problem.
 
 If you build interfaces for a living, I'd like to know: which screen in your product is the biggest guess, and what would it take for you to let an agent decide it instead?
 `,
