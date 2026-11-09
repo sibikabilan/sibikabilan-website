@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { loadIndex, readDoc } from "./repo";
-import { emptyIndex, normalizeIndex } from "./defaults";
+import { emptyIndex, normalizeIndex, starterContent } from "./defaults";
 import type { ChapterMeta, CmsIndex, PostMeta, Settings, Work } from "./types";
 
 export const CMS_TAG = "cms";
@@ -17,10 +17,20 @@ const cachedIndex = unstable_cache(
   { tags: [CMS_TAG], revalidate: 3600 }
 );
 
-// Document URLs are immutable, so their bodies can be cached forever.
+// Uploaded document URLs are immutable, so their bodies can be cached forever.
 const cachedDoc = unstable_cache(async (url: string) => readDoc(url), ["cms-doc-v1"], {
   tags: [CMS_TAG],
 });
+
+/**
+ * Bundled essays and stories (starter: URLs) are read straight from the code.
+ * Their text changes with each deploy, and the forever cache above outlives
+ * deploys, so caching them would keep serving old wording.
+ */
+async function docBody(url: string | null): Promise<string> {
+  if (!url) return "";
+  return starterContent(url) ?? cachedDoc(url);
+}
 
 async function getIndex(): Promise<CmsIndex> {
   try {
@@ -51,7 +61,7 @@ export async function getPublishedPost(slug: string) {
   const i = posts.findIndex((p) => p.slug === slug);
   if (i < 0) return null;
   const post = posts[i];
-  const content = post.contentUrl ? await cachedDoc(post.contentUrl) : "";
+  const content = await docBody(post.contentUrl);
   return { post, content, newer: posts[i - 1] ?? null, older: posts[i + 1] ?? null };
 }
 
@@ -77,7 +87,7 @@ export async function getPublishedChapter(workSlug: string, chapterSlug: string)
   const i = work.chapters.findIndex((c) => c.slug === chapterSlug);
   if (i < 0) return null;
   const chapter = work.chapters[i];
-  const content = chapter.contentUrl ? await cachedDoc(chapter.contentUrl) : "";
+  const content = await docBody(chapter.contentUrl);
   return {
     work,
     chapter,
