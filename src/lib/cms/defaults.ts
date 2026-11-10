@@ -5,8 +5,8 @@ import { readingTime, wordCount } from "@/lib/utils";
 
 export const DEFAULT_SETTINGS: Settings = {
   heroEyebrow: "Entrepreneur · Engineer · Writer",
-  heroHeadline: "Two companies, a decade of software people rely on, and stories that have nothing to do with either.",
-  heroSub: "Based in Bengaluru. Currently building SuprAgent.",
+  heroHeadline: "These days I'm teaching software to build its own screens. At night, I write the stories it can't.",
+  heroSub: "Founder of SuprAgent, based in Bengaluru.",
   nowStatus: "Building SuprAgent · Writing fiction",
   location: "Bengaluru, India",
   email: "sibi.kabilan@gmail.com",
@@ -121,6 +121,8 @@ const FIRST_STARTERS = ["customers-dont-say-no-they-go-quiet", "kill-the-static-
  * edited by hand) move to the current default; anything Sibi wrote stays.
  */
 const LEGACY_DEFAULTS: Partial<Record<keyof Settings, string[]>> = {
+  heroHeadline: ["Two companies, a decade of software people rely on, and stories that have nothing to do with either."],
+  heroSub: ["Based in Bengaluru. Currently building SuprAgent."],
   writingIntro: ["Essays on building companies, agents and interfaces, and the lessons that only show up after launch."],
   fictionIntro: ["Elsewhere, I write fiction. This is where the stories live, a chapter at a time."],
   bio: [

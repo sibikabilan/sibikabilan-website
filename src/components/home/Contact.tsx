@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useMotionValue, useScroll, useTransform, type MotionValue } from "motion/react";
 import type { Settings } from "@/lib/cms/types";
 import { useAtmosphere } from "@/lib/stores";
@@ -19,12 +19,19 @@ const STOP = 0.86;
 /**
  * The two places a scroll comes to rest (section progress, see sectionStops):
  * partway down the corridor with the invitation up, then at the door. A hard
- * scroll or fling is caught on the first, so nobody sails past (useStepScroll).
+ * scroll or fling is caught on the first, so nobody sails past (useStepScroll),
+ * and the page doesn't move on from the door until the walk has got there.
  */
 const HOLDS = [0.5, 1] as const;
 
-/** Forward, the walk runs at about the footage's own pace, never faster than this. */
-const MAX_RATE = 1.2;
+/** Forward, the walk runs at about the footage's own pace, a little quicker when there's far to go. */
+const MAX_RATE = 1.5;
+/** Pushing on while it's still walking hurries it along, up to this. */
+const HURRY_RATE = 2.2;
+/** How long a push keeps it hurrying, in ms. */
+const HURRY_MS = 1600;
+/** Footage that hasn't moved for this long (still loading, say) doesn't keep the page waiting. */
+const STALL_MS = 1500;
 /** Back up the corridor (seeking, since video can't play in reverse) it may go this much faster. */
 const BACK_RATE = 2.4;
 
@@ -36,8 +43,9 @@ function useBetween(p: MotionValue<number>, a: number, b: number, from: number, 
 /**
  * The last room. Scrolling walks you down a concrete corridor to an open
  * door: the scroll sets how far down the corridor you are headed, and the
- * footage walks there at its own pace, so however quickly the page moves the
- * walk never fast-forwards. The light from the door blooms and the rest of the
+ * footage walks there at its own pace (a little quicker if you push on), so
+ * however quickly the page moves the walk never fast-forwards, and the page
+ * waits at the door for it. The light from the door blooms and the rest of the
  * invitation arrives with the footage, as you near the door; the title
  * settles in the middle of the screen as the frame pins.
  */
@@ -47,7 +55,47 @@ export function Contact({ settings }: { settings: Settings }) {
   const { motion: mode } = useAtmosphere();
   const calm = mode === "calm";
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ["start end", "end end"] });
-  useStepScroll(ref, HOLDS);
+  /** The footage (1.4 MB) only starts loading as the page nears it, a couple of screens ahead. */
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || near) return;
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setNear(true), { rootMargin: "250% 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [near]);
+  /** When the footage last moved on, and until when it's been asked to hurry. */
+  const pace = useRef({ movedAt: 0, hurryUntil: 0 });
+  /**
+   * Where in the footage the scroll is headed, in seconds (null: nothing to walk). Measured
+   * from where the section is right now rather than from `p`, which only catches up with the
+   * page a frame or so later: the page mustn't be let go on a stale reading.
+   */
+  const aim = useCallback(() => {
+    const v = video.current;
+    const el = ref.current;
+    const d = v?.duration;
+    if (!v || !el || calm || !d || Number.isNaN(d)) return null;
+    const r = el.getBoundingClientRect();
+    const progress = (window.innerHeight - r.top) / Math.max(1, r.height);
+    return Math.min(1, Math.max(0, progress / ARRIVE)) * d * STOP;
+  }, [calm]);
+  const hold = useMemo(
+    () => ({
+      // Free to move on once the walk is at the scroll's mark, or if the footage is stuck.
+      ready: () => {
+        const target = aim();
+        const v = video.current;
+        if (target === null || !v) return true;
+        return v.currentTime >= target - 0.05 || performance.now() - pace.current.movedAt > STALL_MS;
+      },
+      nudge: () => {
+        pace.current.hurryUntil = performance.now() + HURRY_MS;
+      },
+    }),
+    [aim]
+  );
+  useStepScroll(ref, HOLDS, undefined, hold);
 
   /** How far down the corridor the footage is, 0 to 1 (the door). */
   const walk = useMotionValue(0);
@@ -61,12 +109,15 @@ export function Contact({ settings }: { settings: Settings }) {
   useEffect(() => {
     const v = video.current;
     const el = ref.current;
-    if (!v || !el || calm) return;
+    const state = pace.current;
+    if (!v || !el || calm || !near) return;
     let raf = 0;
     let last = 0;
     let primed = false;
     /** Whether the walk wants the footage running right now. */
     let walking = false;
+    /** Where the footage was last frame. */
+    let lastT = -1;
     // Some browsers only decode frames for seeking once the video has played a moment.
     const prime = () => {
       if (primed) return;
@@ -79,15 +130,20 @@ export function Contact({ settings }: { settings: Settings }) {
       raf = requestAnimationFrame(tick);
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 1 / 60;
       last = now;
-      const d = v.duration;
-      if (!d || Number.isNaN(d)) return;
-      const end = d * STOP;
-      const target = Math.min(1, Math.max(0, p.get() / ARRIVE)) * end;
+      const target = aim();
+      if (target === null) return;
+      const end = v.duration * STOP;
       const t = v.currentTime;
+      if (t !== lastT || !walking) {
+        lastT = t;
+        state.movedAt = performance.now();
+      }
       walking = target > t + 0.05;
       if (walking) {
-        // Ahead: let it play, a little quicker while there's far to go, easing in as it arrives.
-        const rate = Math.min(MAX_RATE, Math.max(0.6, (target - t) / 0.6));
+        // Ahead: let it play, a little quicker while there's far to go (quicker still if
+        // someone's pushing on), easing in as it arrives.
+        const cap = now < state.hurryUntil ? HURRY_RATE : MAX_RATE;
+        const rate = Math.min(cap, Math.max(0.6, (target - t) / 0.6));
         if (Math.abs(v.playbackRate - rate) > 0.04) v.playbackRate = rate;
         if (v.paused) v.play().catch(() => undefined);
       } else if (target < t - 0.05) {
@@ -102,6 +158,7 @@ export function Contact({ settings }: { settings: Settings }) {
       ([e]) => {
         cancelAnimationFrame(raf);
         last = 0;
+        state.movedAt = performance.now();
         if (e.isIntersecting) {
           prime();
           raf = requestAnimationFrame(tick);
@@ -114,7 +171,7 @@ export function Contact({ settings }: { settings: Settings }) {
       io.disconnect();
       cancelAnimationFrame(raf);
     };
-  }, [calm, p, walk]);
+  }, [aim, calm, near, walk]);
 
   return (
     <section
@@ -130,11 +187,12 @@ export function Contact({ settings }: { settings: Settings }) {
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         <video
           ref={video}
-          src="/media/hallway.mp4"
+          // In calm mode the hallway is the still alone.
+          src={near && !calm ? "/media/hallway.mp4" : undefined}
           poster="/media/hallway-poster.webp"
           muted
           playsInline
-          preload="auto"
+          preload={near ? "auto" : "none"}
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover"
         />

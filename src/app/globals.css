@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* A phone with a short screen (an older phone, or a browser with its bars showing): for tightening
+   a section that should still fit on one screen. */
+@custom-variant short {
+  @media (max-width: 767px) and (max-height: 760px) {
+    @slot;
+  }
+}
+
 /* ═════════════════════════════════════════════════════════════
    CINEMATIC DESIGN SYSTEM
    One dark stage, four lighting setups. Every accent on the site

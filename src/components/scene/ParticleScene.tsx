@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { atmosphereStore, sceneStore } from "@/lib/stores";
 import { ATMOSPHERES } from "@/lib/atmosphere";
-import { loadTargets, SILHOUETTES, type Target, type TargetKey } from "./targets";
+import { buildTargets, HALOS, ROLLING, type TargetKey } from "./targets";
 
 /* ───────────────────────── shaders ───────────────────────── */
 
@@ -15,6 +15,7 @@ const particleVertex = /* glsl */ `
   uniform float uSize;
   uniform float uPixelRatio;
   uniform float uMotion;
+  uniform float uRoll;
   uniform vec3 uMouse;
   uniform float uDisperse;
   uniform vec2 uView;
@@ -36,6 +37,7 @@ const particleVertex = /* glsl */ `
   float easeInOutCubic(float t) {
     return t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0;
   }
+  mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
   float hash12(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float vnoise(vec2 p) {
     vec2 i = floor(p);
@@ -62,6 +64,9 @@ const particleVertex = /* glsl */ `
       cos(uTime * 0.3 + aRand * 20.0),
       sin(uTime * 0.25 + aRand * 10.0)
     ) * 0.02 * uMotion;
+
+    // The crown turns slowly in its own plane.
+    pos.xy = rot(uRoll) * pos.xy;
 
     vec2 d = pos.xy - uMouse.xy;
     float push = smoothstep(1.15, 0.0, length(d)) * uMouse.z;
@@ -125,7 +130,7 @@ const particleVertex = /* glsl */ `
     vLight = mix(clamp(0.5 + pos.x * 0.24 + pos.y * 0.07 + pos.z * 0.15, 0.0, 1.0), warm, toRoom);
     float grain = 0.45 + 0.55 * fract(aRand * 7.31);
     // Falling, every grain shows at least as a fine speck, so the pour reads as a stream of dust.
-    float shadow = grain * max(mix(aFromB, aToB, e), 0.42 * dd) * (1.0 + push * 1.4) * (1.0 - 0.15 * arc) * (1.0 + 0.9 * uReturn * arc);
+    float formed = grain * max(mix(aFromB, aToB, e), 0.42 * dd) * (1.0 + push * 1.4) * (1.0 - 0.15 * arc) * (1.0 + 0.9 * uReturn * arc);
     // In the room: drifting banks of smoke, lit around the reader's word, faded where the current wraps.
     // Banks drawn out sideways, the way smoke layers in still air, with a finer curl inside them.
     vec2 q = room * vec2(0.26, 0.5) + vec2(uTime * 0.02, -uTime * 0.03);
@@ -134,7 +139,7 @@ const particleVertex = /* glsl */ `
     float lit = exp(-dot(dl, dl) * 0.08);
     float wrap = smoothstep(0.0, 0.08, climb) * smoothstep(1.0, 0.9, climb);
     float smoke = grain * (0.12 + 1.15 * dens * dens) * (0.55 + 1.6 * lit) * (0.8 + 0.4 * uWarmth) * wrap * uField;
-    vAlpha = mix(shadow, smoke, toRoom);
+    vAlpha = mix(formed, smoke, toRoom);
     vRand = aRand;
   }
 `;
@@ -159,7 +164,7 @@ const particleFragment = /* glsl */ `
     vec3 col = mix(uRim, uKey, smoothstep(0.12, 0.88, vLight));
     col = mix(col, vec3(1.0), 0.22 * step(0.94, vRand));
 
-    // He stands in front of his shadow: no grain is drawn over his shape, even where the
+    // He stands in front of the halo: no grain is drawn over his shape, even where the
     // portrait fades into the page. The mask is his cutout, read a little blurred and
     // thresholded low so it reaches a few pixels past his edge (his live clip moves a touch).
     if (uOccOn > 0.5) {
@@ -184,17 +189,7 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 
 function Stage({ count }: { count: number }) {
   const { viewport, gl, camera } = useThree();
-  // The shapes are traced from small mask images, so they arrive a moment after the scene.
-  const [targets, setTargets] = useState<Record<TargetKey, Target> | null>(null);
-  useEffect(() => {
-    let live = true;
-    loadTargets(count)
-      .then((t) => live && setTargets(t))
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, [count]);
+  const targets = useMemo(() => buildTargets(count), [count]);
 
   const { geometry, rand } = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -239,6 +234,7 @@ function Stage({ count }: { count: number }) {
           uSize: { value: 30 },
           uPixelRatio: { value: 1 },
           uMotion: { value: 1 },
+          uRoll: { value: 0 },
           uMouse: { value: new THREE.Vector3(99, 99, 0) },
           uKey: { value: new THREE.Color(initial.key) },
           uRim: { value: new THREE.Color(initial.rim) },
@@ -290,6 +286,7 @@ function Stage({ count }: { count: number }) {
     mouse: new THREE.Vector2(0, 0),
     mouseActive: 0,
     lastMove: 0,
+    rollSpeed: 0,
     /** Which way the dust last moved: 0 pouring down into the prologue, 1 gathering back into the hero. */
     returning: 0,
     lastDisperse: 0,
@@ -310,7 +307,6 @@ function Stage({ count }: { count: number }) {
 
   /** Freezes the in-flight interpolation into aFrom, so a new move starts where particles are. */
   function retarget(next: TargetKey) {
-    if (!targets) return;
     const m = motion.current;
     const from = geometry.getAttribute("aFrom") as THREE.BufferAttribute;
     const to = geometry.getAttribute("aTo") as THREE.BufferAttribute;
@@ -353,9 +349,9 @@ function Stage({ count }: { count: number }) {
     const u = material.uniforms;
     const t = state.clock.elapsedTime;
 
-    const n = SILHOUETTES.length;
-    const wanted: TargetKey = SILHOUETTES[((scene.variant % n) + n) % n].key;
-    if (targets && wanted !== m.current) {
+    const n = HALOS.length;
+    const wanted: TargetKey = HALOS[((scene.variant % n) + n) % n].key;
+    if (wanted !== m.current) {
       m.duration = calm ? 1.2 : m.current === null ? 3.2 : 1.9;
       retarget(wanted);
     }
@@ -372,7 +368,7 @@ function Stage({ count }: { count: number }) {
     const cssW = gl.domElement.clientWidth || window.innerWidth;
     const cssH = gl.domElement.clientHeight || window.innerHeight;
     if (scene.anchor) {
-      // Pin the shadow to its frame in the hero and size it to match.
+      // Centre the halo on his head in the hero, its ring the anchor's width across.
       scale = ((scene.anchor.width / cssW) * viewport.width * 0.5) / 2.05;
       xTarget = (scene.anchor.x / cssW - 0.5) * viewport.width;
       yTarget = (0.5 - scene.anchor.y / cssH) * viewport.height;
@@ -412,10 +408,13 @@ function Stage({ count }: { count: number }) {
     u.uRim.value.copy(m.rimColor);
 
     u.uMotion.value += ((calm ? 0.15 : 1) - u.uMotion.value) * Math.min(1, dt * 2);
+    // Each crown turns at its own pace, easing from one speed to the next; calm holds them still.
+    const rollTarget = m.current && !calm ? ROLLING[m.current] : 0;
+    m.rollSpeed += (rollTarget - m.rollSpeed) * Math.min(1, dt * 0.8);
+    u.uRoll.value += dt * 0.12 * m.rollSpeed;
     // Once dispersed, the dust stays on as the prologue's smoke for as long as the prologue is in view.
     const settled = dispersing && scene.field > 0.001;
-    // Nothing shows until the shapes are ready, so the first thing seen is the figure gathering.
-    const haloOpacity = targets && (scene.target === "halo" || settled) ? 1 : 0;
+    const haloOpacity = scene.target === "halo" || settled ? 1 : 0;
     u.uDisperse.value = calm ? 0 : scene.disperse;
     // Read the direction from the scroll, and ease between the two paths so a change of
     // heart mid-way slides the grains across rather than jumping them.

@@ -22,10 +22,10 @@ const enter = (delay: number, duration: number, from: { y?: string; blur?: strin
 
 /**
  * The opening. The portrait stays put while scrolling rewrites the words
- * beside it (who I am, then build, engineer, write), and what stands behind
- * him changes with each line, drawn in light by the particle field: his own
- * shadow, a third larger than him; the same shadow with a hammer on its
- * shoulder, then with headphones; and last an open book (see scene/targets).
+ * beside it (who I am, then build, engineer, write), and the halo behind his
+ * head, drawn in light by the particle field, becomes a different crown for
+ * each line: a plain halo, a founder's sunburst, an engineer's circuit, and a
+ * storyteller's string of orbs (see scene/targets).
  */
 export function Hero({ settings }: { settings: Settings }) {
   const ref = useRef<HTMLElement>(null);
@@ -82,31 +82,28 @@ export function Hero({ settings }: { settings: Settings }) {
             // Starts part-visible so the portrait counts as painted at once; the blur still does the reveal.
             style={{ ...enter(0.25, 1.8, { y: "30px", blur: "12px" }), "--enter-opacity": "0.35" } as CSSProperties}
           >
-            {/* He is the picture: as tall as the frame allows, standing at its bottom, with just enough
-                room above for the shadow's head to clear the nav. On phones the words below may run
+            {/* He is the picture: as tall as the frame allows, standing at its bottom. The halo is
+                centred on his head and its tallest crown (the founder's sunburst) rises to about 0.18 of
+                the portrait's height above the square, so the square is never taller than leaves that
+                room under the nav: on desktop at most (screen - nav - 12px) / 1.18, and 900px on the
+                largest screens; on phones the top row is 52svh and 42svh keeps the same room. On phones the words below may run
                 over his chest, where the portrait has already faded into the page.
-                The dust is cut out of his shape here (data-scene-occluder), so it never comes in front of him. */}
-            <div data-scene-occluder className="absolute bottom-0 left-1/2 aspect-square h-[min(46svh,92vw)] -translate-x-1/2 lg:h-[min(76svh,46vw,700px)]">
-              {/* The shadow's frame, standing on the same floor: 1.6 of his widths across and 1.3 high,
-                  the size of the masks in /media/shadows (see scripts/build-shadows.mjs). The
-                  particle field draws the shape into it (data-scene-anchor). */}
-              <div data-scene-anchor aria-hidden className="absolute bottom-0 left-1/2 aspect-[480/390] w-[160%] -translate-x-1/2">
-                {/* The light the shadow stands in. */}
-                <div
-                  className="absolute left-1/2 top-[50%] h-[85%] w-[75%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl"
-                  style={{
-                    background:
-                      "radial-gradient(closest-side, color-mix(in oklab, var(--beam) 16%, transparent), color-mix(in oklab, var(--rim) 6%, transparent) 55%, transparent)",
-                  }}
-                />
-              </div>
-              {/* Backlight on his head and shoulders. */}
+                The dust is cut out of his shape here (data-scene-occluder), so the halo passes behind him. */}
+            <div
+              data-scene-occluder
+              className="absolute bottom-0 left-1/2 aspect-square h-[min(42svh,92vw)] -translate-x-1/2 lg:h-[min(76svh,calc((100svh-var(--nav-h)-12px)/1.18),46vw,900px)]"
+            >
+              {/* The halo's anchor: centred on his head (hair at 8% of the square, chin at 50%), and
+                  the ring's width across, so it clears his hair by a tenth of the square and runs
+                  behind his neck. The particle field draws the crowns around it (see scene/targets). */}
+              <div data-scene-anchor aria-hidden className="absolute left-1/2 top-[29%] aspect-square w-[60%] -translate-x-1/2 -translate-y-1/2" />
+              {/* Backlight: the halo's glow falling on his head and shoulders. */}
               <div
                 aria-hidden
-                className="absolute left-1/2 top-[34%] h-[78%] w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl"
+                className="absolute left-1/2 top-[30%] h-[78%] w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl"
                 style={{
                   background:
-                    "radial-gradient(circle, color-mix(in oklab, var(--beam) 18%, transparent) 0%, color-mix(in oklab, var(--rim) 8%, transparent) 45%, transparent 70%)",
+                    "radial-gradient(circle, color-mix(in oklab, var(--beam) 22%, transparent) 0%, color-mix(in oklab, var(--rim) 9%, transparent) 45%, transparent 70%)",
                 }}
               />
               {/* Reaches a little above the square, so the rim light over his hair fades out instead of
@@ -160,6 +157,8 @@ export function Hero({ settings }: { settings: Settings }) {
                         Sibi
                       </span>
                     </span>
+                    {/* The lines are blocks, so this space shows nowhere; it keeps the name two words for
+                        search engines and screen readers, which would otherwise read "SibiKabilan". */}{" "}
                     <span className="block overflow-hidden pb-[0.1em]">
                       <span className="enter-line block italic text-ink-2" style={enter(0.47, 1.4)}>
                         Kabilan

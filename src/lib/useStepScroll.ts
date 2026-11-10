@@ -3,7 +3,7 @@
 import { useEffect, type RefObject } from "react";
 import type Lenis from "lenis";
 import { wheelGates, type WheelGate } from "@/lib/stores";
-import { isTouchPaged, sectionStops, stepSections, touchStepsChanged } from "@/lib/touchSteps";
+import { isTouchPaged, sectionStops, stepSections, touchStepsChanged, type StepHold } from "@/lib/touchSteps";
 import { createPushDetector } from "@/lib/wheelPush";
 
 const STEP_SECONDS = 0.6;
@@ -38,13 +38,20 @@ function stepAt(ys: number[], y: number) {
  *
  * What doesn't count is momentum (see wheelPush). At the first and last stop
  * a new push is handed back to normal scrolling, so leaving the section feels
- * like any other scroll.
+ * like any other scroll; unless `hold` says the section isn't finished yet,
+ * in which case the page stays on its last stop and the push is passed on to
+ * it (`nudge`), so it can hurry.
  *
  * A hard fling can't fly past the section either: arriving at speed with
  * the scroll aimed beyond it, the page is caught on its first stop (or its
  * last, coming back up).
  */
-export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number | readonly number[], media?: string) {
+export function useStepScroll(
+  ref: RefObject<HTMLElement | null>,
+  steps: number | readonly number[],
+  media?: string,
+  hold?: StepHold
+) {
   const key = typeof steps === "number" ? String(steps) : steps.join(",");
   useEffect(() => {
     const el = ref.current;
@@ -104,8 +111,14 @@ export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number 
 
       const target = (goal ?? Math.round(f)) + (deltaY > 0 ? 1 : -1);
       if (target < 0 || target > ys.length - 1) {
-        // Past the first or last stop: let the page scroll on, once any glide has landed.
+        // Past the first or last stop: let the page scroll on, once any glide has landed
+        // and, going on down, once the section is finished.
         if (gliding) return swallow();
+        if (target > 0 && hold && !hold.ready()) {
+          push.accept(input);
+          hold.nudge?.();
+          return swallow();
+        }
         released = true;
         return true;
       }
@@ -141,7 +154,7 @@ export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number 
     wheelGates.add(gate);
     window.addEventListener("scroll", onScroll, { passive: true });
     // Touch screens page through the same stops, one swipe each (see touchSteps).
-    const section = { el, stops };
+    const section = { el, stops, hold };
     stepSections.add(section);
     touchStepsChanged();
     return () => {
@@ -151,5 +164,5 @@ export function useStepScroll(ref: RefObject<HTMLElement | null>, steps: number 
       touchStepsChanged();
     };
     // `key` stands in for `steps`, so a new array with the same stops doesn't re-run this.
-  }, [ref, key, media]);
+  }, [ref, key, media, hold]);
 }

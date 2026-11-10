@@ -29,8 +29,14 @@ import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { wheelGates, type WheelGate } from "@/lib/stores";
 import { createPushDetector, GESTURE_GAP_MS } from "@/lib/wheelPush";
 
+/**
+ * A section that, while it's busy, keeps the page from moving on past its last stop: the
+ * hallway, until the walk has reached the door. `nudge` is a push on while it's waiting.
+ */
+export type StepHold = { ready: () => boolean; nudge?: () => void };
+
 /** A pinned section and where its steps sit on the page (document y, in px). */
-export type StepSection = { el: HTMLElement; stops: () => number[] };
+export type StepSection = { el: HTMLElement; stops: () => number[]; hold?: StepHold };
 export const stepSections = new Set<StepSection>();
 
 let resync: (() => void) | null = null;
@@ -144,7 +150,19 @@ export function installTouchSteps(): () => void {
     if (ys.length < 2) return;
     const from = goal ?? window.scrollY;
     const next = dir > 0 ? ys.find((y) => y > from + 6) : [...ys].reverse().find((y) => y < from - 6);
-    if (next !== undefined) glideTo(next);
+    if (next === undefined) return;
+    // A section that isn't finished keeps the page on its last stop until it is.
+    if (dir > 0)
+      for (const s of stepSections) {
+        if (!s.hold || s.hold.ready()) continue;
+        const own = s.stops();
+        const last = own[own.length - 1];
+        if (from >= own[0] - 6 && from <= last + 6 && next > last + 6) {
+          s.hold.nudge?.();
+          return;
+        }
+      }
+    glideTo(next);
   };
 
   const intent = Observer.create({

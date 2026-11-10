@@ -1,15 +1,10 @@
+
 /**
- * The shapes the hero's particle field can become: his own outline, a third
- * larger than him, standing just behind the portrait so it shows as a band of
- * light round his head and off his shoulders. Then the same shadow in the
- * same pose with one thing added for two of the opening's lines: a hammer on
- * the shoulder (build), headphones (engineer). For the last (write), an open
- * book standing behind him, drawn in line. Each is traced from a small black
- * and white mask in /media/shadows (made by scripts/build-shadows.mjs) and
- * returns `count` xyz triplets in world units.
- *
- * x runs -2.05..2.05 across the frame's width (2.05 is half the anchor's
- * width, see ParticleScene) and y up the frame, centred on it.
+ * The halo crowns the hero particle field can become, one for each line of
+ * the opening: a plain halo (who I am), a founder's sunburst (build), an
+ * engineer's circuit (engineer), and a storyteller's string of orbs (write).
+ * Each returns `count` xyz triplets in world units, centred on his head, with
+ * the ring at radius R; the hero's anchor sets how large R is on the page.
  */
 
 type Rng = () => number;
@@ -38,124 +33,181 @@ export interface Target {
   bright: Float32Array;
 }
 
-/**
- * /media is cached for a month (see next.config), so the masks carry a version:
- * bump it whenever scripts/build-shadows.mjs is run again.
+/* ───────────────────────── halos ─────────────────────────
+ * A set of crowns that sit behind the portrait. All are centered on the
+ * origin (the head) with the ring at radius R, and use z for depth: glow
+ * behind, ring in the middle, sparks drifting towards the camera.
  */
-const V = "?v=5";
 
-export const SILHOUETTES = [
-  { key: "you", name: "His own shadow", src: `/media/shadows/you.png${V}` },
-  { key: "builder", name: "The builder", src: `/media/shadows/builder.png${V}` },
-  { key: "engineer", name: "The engineer", src: `/media/shadows/engineer.png${V}` },
-  { key: "writer", name: "The open book", src: `/media/shadows/writer.png${V}` },
-] as const;
+const R = 2.05;
 
-export type TargetKey = (typeof SILHOUETTES)[number]["key"];
-
-/** Half the frame's width in world units. */
-const HALF = 2.05;
-
-interface Mask {
-  w: number;
-  h: number;
-  /** Pixel indices on the outline, and inside the figure. */
-  edge: Uint32Array;
-  fill: Uint32Array;
-  /** Each pixel's tone, 0 to 1: grey in the mask draws fainter, with fewer grains. */
-  tone: Float32Array;
+function sparks(r: Rng, pos: Float32Array, bright: Float32Array, n: number, spread = 1.6) {
+  const a = r() * Math.PI * 2;
+  const d = R + (r() - 0.3) * spread;
+  pos[n * 3] = Math.cos(a) * d;
+  pos[n * 3 + 1] = Math.sin(a) * d;
+  pos[n * 3 + 2] = 0.2 + r() * 0.9;
+  bright[n] = 0.25 + r() * 0.6;
 }
 
-async function loadMask(src: string): Promise<Mask> {
-  const img = new Image();
-  img.src = src;
-  await img.decode();
-  const w = img.naturalWidth;
-  const h = img.naturalHeight;
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) throw new Error("no 2d context");
-  ctx.drawImage(img, 0, 0);
-  const px = ctx.getImageData(0, 0, w, h).data;
-  const tone = new Float32Array(w * h);
-  for (let i = 0; i < tone.length; i++) tone[i] = px[i * 4] > 240 ? 1 : px[i * 4] / 255;
-  // Past the bottom edge counts as inside: the figure is cropped there, not outlined.
-  const inside = (x: number, y: number) => (y >= h ? x >= 0 && x < w : x >= 0 && x < w && y >= 0 && px[(y * w + x) * 4] > 127);
-  const edge: number[] = [];
-  const fill: number[] = [];
-  const R = 2;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (!inside(x, y)) continue;
-      const rim = !inside(x - R, y) || !inside(x + R, y) || !inside(x, y - R) || !inside(x, y + R);
-      (rim ? edge : fill).push(y * w + x);
-    }
-  }
-  return { w, h, edge: Uint32Array.from(edge), fill: Uint32Array.from(fill), tone };
+function glow(r: Rng, pos: Float32Array, bright: Float32Array, n: number) {
+  const a = r() * Math.PI * 2;
+  const d = R * 0.95 * Math.sqrt(r());
+  pos[n * 3] = Math.cos(a) * d;
+  pos[n * 3 + 1] = Math.sin(a) * d;
+  pos[n * 3 + 2] = -0.7 + gauss(r) * 0.12;
+  bright[n] = 0.12 + r() * 0.22;
 }
 
-function silhouette(mask: Mask, count: number, seed: number): Target {
-  const r = mulberry32(seed);
+function ring(r: Rng, pos: Float32Array, bright: Float32Array, n: number, radius = R, width = 0.035, z = 0) {
+  const a = r() * Math.PI * 2;
+  const d = radius + gauss(r) * width;
+  pos[n * 3] = Math.cos(a) * d;
+  pos[n * 3 + 1] = Math.sin(a) * d;
+  pos[n * 3 + 2] = z + gauss(r) * 0.05;
+  bright[n] = 0.6 + r() * 0.7;
+}
+
+/** 01 · The halo: a clean ring with a soft disc of light behind the head. */
+function haloRing(count: number): Target {
+  const r = mulberry32(5);
   const pos = new Float32Array(count * 3);
   const bright = new Float32Array(count);
-  const { w, h, edge, fill, tone } = mask;
-  const unit = (HALF * 2) / w;
-  // A shape drawn only in fine line (the book) can have no inside to speak of: use its lines.
-  const body = fill.length ? fill : edge;
-  // Fainter pixels are picked less often, in proportion to their tone.
-  const pick = (list: Uint32Array) => {
-    let i = list[Math.floor(r() * list.length)];
-    for (let tries = 0; tries < 6 && tone[i] < 1 && r() > tone[i] * tone[i]; tries++) i = list[Math.floor(r() * list.length)];
-    return i;
-  };
   for (let n = 0; n < count; n++) {
     const k = r();
-    const fromEdge = k < 0.52 || k >= 0.9;
-    const i = pick(fromEdge ? edge : body);
-    let x = (i % w) + r() - 0.5;
-    let y = Math.floor(i / w) + r() - 0.5;
-    let z = 0;
-    let b: number;
-    if (k < 0.52) {
-      // The outline: the light catching the edge of the shadow.
-      z = gauss(r) * 0.04;
-      b = 0.65 + r() * 0.6;
-    } else if (k < 0.78) {
-      // The body of the shadow: a dim, even haze.
-      z = -0.3 + gauss(r) * 0.08;
-      b = 0.1 + r() * 0.14;
-    } else if (k < 0.9) {
-      // A soft aura spilling just past the figure.
-      x += gauss(r) * 7;
-      y += gauss(r) * 7;
-      z = -0.55 + gauss(r) * 0.1;
-      b = 0.05 + r() * 0.1;
-    } else {
-      // Loose sparks drifting off the outline, towards the camera.
-      const a = r() * Math.PI * 2;
-      const d = 4 + r() * 22;
-      x += Math.cos(a) * d;
-      y += Math.sin(a) * d;
-      z = 0.2 + r() * 0.8;
-      b = 0.2 + r() * 0.45;
-    }
-    // Melt away towards the bottom, where the figure is cropped.
-    const fade = Math.min(1, Math.max(0, (h - y) / (h * 0.22)));
-    pos[n * 3] = (x - w / 2) * unit;
-    pos[n * 3 + 1] = (h / 2 - y) * unit;
-    pos[n * 3 + 2] = z;
-    bright[n] = b * (0.25 + 0.75 * fade) * (0.35 + 0.65 * tone[i]);
+    if (k < 0.5) ring(r, pos, bright, n);
+    else if (k < 0.62) ring(r, pos, bright, n, R * 1.09, 0.012, -0.25);
+    else if (k < 0.85) glow(r, pos, bright, n);
+    else sparks(r, pos, bright, n);
   }
   return { pos, bright };
 }
 
-export async function loadTargets(count: number): Promise<Record<TargetKey, Target>> {
-  const masks = await Promise.all(SILHOUETTES.map((s) => loadMask(s.src)));
-  const out = {} as Record<TargetKey, Target>;
-  SILHOUETTES.forEach((s, i) => {
-    out[s.key] = silhouette(masks[i], count, 11 + i);
-  });
-  return out;
+/** 02 · The founder's crown: a sunburst of blades, longest at the top. */
+function haloCrown(count: number): Target {
+  const r = mulberry32(6);
+  const pos = new Float32Array(count * 3);
+  const bright = new Float32Array(count);
+  const blades = 28;
+  for (let n = 0; n < count; n++) {
+    const k = r();
+    if (k < 0.32) ring(r, pos, bright, n, R, 0.03);
+    else if (k < 0.82) {
+      const i = Math.floor(r() * blades);
+      const ang = (i / blades) * Math.PI * 2 + Math.PI / 2;
+      const top = Math.max(0, Math.sin(ang));
+      const len = (i % 2 === 0 ? 0.95 : 0.5) * (0.45 + 0.55 * top) + 0.12;
+      const t = Math.pow(r(), 0.8);
+      const halfWidth = 0.09 * (1 - t);
+      const across = (r() - 0.5) * 2 * halfWidth;
+      const d = R + 0.06 + t * len;
+      const x = Math.cos(ang) * d - Math.sin(ang) * across;
+      const y = Math.sin(ang) * d + Math.cos(ang) * across;
+      pos[n * 3] = x;
+      pos[n * 3 + 1] = y;
+      pos[n * 3 + 2] = -0.15 + t * 0.15;
+      bright[n] = 0.5 + (1 - t) * 0.7;
+    } else if (k < 0.93) glow(r, pos, bright, n);
+    else sparks(r, pos, bright, n, 2.2);
+  }
+  return { pos, bright };
 }
+
+/** 03 · The engineer's circuit: segmented rings, nodes and right angle traces. */
+function haloCircuit(count: number): Target {
+  const r = mulberry32(7);
+  const pos = new Float32Array(count * 3);
+  const bright = new Float32Array(count);
+  const nodes = 16;
+  for (let n = 0; n < count; n++) {
+    const k = r();
+    if (k < 0.3) ring(r, pos, bright, n, R, 0.02);
+    else if (k < 0.55) {
+      // dashed outer arcs
+      const layer = r() < 0.5 ? 0.32 : 0.6;
+      let a = r() * Math.PI * 2;
+      const seg = Math.PI / 10;
+      if (Math.floor(a / seg) % 2 === 1) a -= seg;
+      const d = R + layer + gauss(r) * 0.01;
+      pos[n * 3] = Math.cos(a) * d;
+      pos[n * 3 + 1] = Math.sin(a) * d;
+      pos[n * 3 + 2] = -0.2 - layer * 0.3;
+      bright[n] = 0.4 + r() * 0.5;
+    } else if (k < 0.8) {
+      // traces: radial, then a short tangential jog
+      const i = Math.floor(r() * nodes);
+      const a = (i / nodes) * Math.PI * 2;
+      const t = r();
+      const radial = t < 0.6;
+      const d = radial ? R + (t / 0.6) * 0.32 : R + 0.32;
+      const jog = radial ? 0 : ((t - 0.6) / 0.4) * 0.18 * (i % 2 ? 1 : -1);
+      const aa = a + jog / d;
+      pos[n * 3] = Math.cos(aa) * d;
+      pos[n * 3 + 1] = Math.sin(aa) * d;
+      pos[n * 3 + 2] = -0.1;
+      bright[n] = 0.45 + r() * 0.4;
+    } else if (k < 0.9) {
+      // square pads at the end of each trace
+      const i = Math.floor(r() * nodes);
+      const a = (i / nodes) * Math.PI * 2 + (0.18 * (i % 2 ? 1 : -1)) / (R + 0.32);
+      const cx = Math.cos(a) * (R + 0.32);
+      const cy = Math.sin(a) * (R + 0.32);
+      pos[n * 3] = cx + (r() - 0.5) * 0.09;
+      pos[n * 3 + 1] = cy + (r() - 0.5) * 0.09;
+      pos[n * 3 + 2] = -0.1;
+      bright[n] = 1.1;
+    } else glow(r, pos, bright, n);
+  }
+  return { pos, bright };
+}
+
+/** 04 · The storyteller's orbit: orbs strung on a fine thread, like beads of light. */
+function haloOrbs(count: number): Target {
+  const r = mulberry32(8);
+  const pos = new Float32Array(count * 3);
+  const bright = new Float32Array(count);
+  const orbs = 9;
+  for (let n = 0; n < count; n++) {
+    const k = r();
+    if (k < 0.62) {
+      const i = Math.floor(r() * orbs);
+      const a = (i / orbs) * Math.PI * 2 + Math.PI / 2;
+      const rad = 0.2 * Math.cbrt(r());
+      const u = r() * Math.PI * 2;
+      const v = Math.acos(2 * r() - 1);
+      pos[n * 3] = Math.cos(a) * (R + 0.15) + rad * Math.sin(v) * Math.cos(u);
+      pos[n * 3 + 1] = Math.sin(a) * (R + 0.15) + rad * Math.sin(v) * Math.sin(u);
+      pos[n * 3 + 2] = rad * Math.cos(v);
+      bright[n] = 0.7 + r() * 0.6;
+    } else if (k < 0.78) ring(r, pos, bright, n, R + 0.15, 0.008, -0.05);
+    else if (k < 0.92) glow(r, pos, bright, n);
+    else sparks(r, pos, bright, n);
+  }
+  return { pos, bright };
+}
+
+export const HALOS = [
+  { key: "halo-ring", name: "The halo" },
+  { key: "halo-crown", name: "The founder's crown" },
+  { key: "halo-circuit", name: "The engineer's circuit" },
+  { key: "halo-orbs", name: "The storyteller's orbit" },
+] as const;
+
+export type TargetKey = (typeof HALOS)[number]["key"];
+
+export function buildTargets(count: number): Record<TargetKey, Target> {
+  return {
+    "halo-ring": haloRing(count),
+    "halo-crown": haloCrown(count),
+    "halo-circuit": haloCircuit(count),
+    "halo-orbs": haloOrbs(count),
+  };
+}
+
+/** Rotation within the ring's own plane, like a crown slowly turning (relative speeds). */
+export const ROLLING: Record<TargetKey, number> = {
+  "halo-ring": 0.3,
+  "halo-crown": 0.6,
+  "halo-circuit": -0.5,
+  "halo-orbs": 0.8,
+};
